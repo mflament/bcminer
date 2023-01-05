@@ -1,0 +1,29 @@
+.BCMinerApplication {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5em;
+
+  .miner-config {
+    display: flex;
+    flex-direction: row;
+    column-gap: 0.3em;
+  }
+
+  .mining-controls {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.3em;
+
+    & > div {
+      display: flex;
+      flex-direction: row;
+      column-gap: 0.3em;
+      span {
+        display: inline-block;
+        width: 10%;
+        min-width: fit-content;
+        white-space: nowrap;
+      }
+    }
+  }
+}
