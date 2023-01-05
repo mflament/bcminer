@@ -30,7 +30,7 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 
     constructor(props: Readonly<MinerControllerProps> | MinerControllerProps) {
         super(props);
-        this.state = {minerId: "glvs", totalHashes: 0, hps: 0};
+        this.state = {minerId: "glfs", totalHashes: 0, hps: 0};
         this._miner = this.createMiner(this.state.minerId);
     }
 
@@ -44,7 +44,6 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
                 Miner :
                 <select onChange={setMiner} value={minerId}>
                     <option value="glfs">Webgl FS</option>
-                    <option value="glvs">Webgl VS</option>
                     <option value="js">JS</option>
                 </select>
                 {miner?.controls}
@@ -121,5 +120,6 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 }
 
 function formatNumber(n: number) {
-    return n.toLocaleString(undefined, {maximumFractionDigits: 0, useGrouping: true});
+    const mmn = n / 1_000_000;
+    return mmn.toFixed(2);
 }

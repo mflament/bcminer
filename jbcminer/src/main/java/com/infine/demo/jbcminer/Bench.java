@@ -31,13 +31,13 @@ public class Bench {
         while (!await(future))
             printStats(startTime, miner.getTotalHashes());
 
-        long elapsed = System.currentTimeMillis() - startTime;
+        double elapsedSecs = (System.currentTimeMillis() - startTime) / 1000d;
         printStats(startTime, miner.getTotalHashes());
         Integer nonce = get(future);
         if (nonce == null)
-            System.out.printf("Nonce not found (%,d ms)%n", elapsed);
+            System.out.printf("Nonce not found (%.2f s)%n", elapsedSecs);
         else
-            System.out.printf("Matched nonce %s (%,d ms)%n", Utils.print(new int[]{nonce}), elapsed);
+            System.out.printf("Matched nonce %s (%.2f s)%n", Utils.print(new int[]{nonce}), elapsedSecs);
     }
 
     private static void start(CompletableFuture<Integer> future, IMiner miner, int startNonce) {
@@ -70,8 +70,9 @@ public class Bench {
 
     private static void printStats(long startTime, long total) {
         double elapsedSecs = (System.currentTimeMillis() - startTime) / 1000.0;
-        int hps = (int) (total / elapsedSecs);
-        System.out.printf("Hashed %,15d : %,d hash/s%n", total, hps);
+        double tmh = total / 1_000_000d;
+        double mhps = total / elapsedSecs / 1_000_000d;
+        System.out.printf("Hashed %.2f million: %.2f million hash/s%n", tmh, mhps);
     }
 
 }

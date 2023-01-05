@@ -60,7 +60,7 @@ public class CLMiner implements Bench.IMiner {
     }
 
     @Override
-    public Integer mine(long startNonce) {
+    public Integer mine(int startNonce) {
         // the buffer for global work
         PointerBuffer gwsBuffer = PointerBuffer.allocateDirect(1);
         gwsBuffer.put(globalWorkSize).flip();
@@ -80,10 +80,10 @@ public class CLMiner implements Bench.IMiner {
         clSetKernelArg(kernel, 1, bufferArg.put(clResult).flip());
 
         totalHashes = 0;
-        long nonce = startNonce;
+        long nonce = Integer.toUnsignedLong(startNonce);
         IntBuffer nonceBuffer = BufferUtils.createIntBuffer(1);
         Integer matchedNonce = null;
-        while (matchedNonce == null && nonce >= 0) {
+        while (matchedNonce == null && nonce < 0xFFFFFFFFL) {
             nonceBuffer.put(0, (int) nonce);
             check(clSetKernelArg(kernel, 2, nonceBuffer));
 
@@ -135,7 +135,7 @@ public class CLMiner implements Bench.IMiner {
         CLDevice device = CLUtils.selectDevice();
         if (device == null)
             return;
-        Bench.start(header -> new CLMiner(device, header, null), null);
+        Bench.start(header -> new CLMiner(device, header, null), 0);
     }
 
 }
