@@ -34,7 +34,7 @@ public class CudaMiner implements IMiner {
     private final int chunkSize;
 
     private final Kernel kernel;
-    private long ctx = NULL;
+    private long ctx;
     private long totalHashes;
 
     public CudaMiner(int deviceIndex, int groupCount, int groupSize, int chunkSize) {

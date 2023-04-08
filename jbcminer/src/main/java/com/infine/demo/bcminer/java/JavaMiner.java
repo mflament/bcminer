@@ -5,7 +5,6 @@ import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 

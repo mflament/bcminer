@@ -1,6 +1,5 @@
 package com.infine.demo.bcminer.api;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.TestHeader;

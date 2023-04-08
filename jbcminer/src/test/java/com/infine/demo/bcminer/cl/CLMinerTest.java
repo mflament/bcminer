@@ -3,10 +3,10 @@ package com.infine.demo.bcminer.cl;
 import com.infine.demo.bcminer.TestHeader;
 import com.infine.demo.bcminer.cl.clsupport.CLDevice;
 import com.infine.demo.bcminer.cl.clsupport.CLUtil;
-import com.infine.demo.bcminer.java.JavaMiner;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class CLMinerTest {
 
