@@ -8,33 +8,41 @@ export class JSMiner implements IMiner {
 
     private _running = false;
     private _matchedNonce?: number | null;
+    private _matchTime = -1;
 
+    private startTime = 0;
     private _workersCount = navigator.hardwareConcurrency;
-    private _workers?: { worker: Worker, totalHashes: number, matchedTimes: number }[];
+    private _workers?: { worker: Worker, totalHashes: number, matchedCount: number }[];
 
     start(blockConfig: BlockConfig, startNonce?: number): void {
         if (this._running) return;
         this._running = true;
         this._matchedNonce = undefined;
         startNonce = startNonce === undefined ? 0 : startNonce;
-        this._workers = []
+        this._workers = [];
+
+        this.startTime = performance.now();
         for (let threadIndex = 0; threadIndex < this._workersCount; threadIndex++) {
             const worker = new Worker(new URL("./JSMinerWorker.ts", import.meta.url));
             const message: JSMinerStart = {startNonce, threadIndex, blockConfig};
             worker.onmessage = this.handleWorkerResponse
             worker.postMessage(message)
-            this._workers.push({worker, totalHashes: 0, matchedTimes: 0})
+            this._workers.push({worker, totalHashes: 0, matchedCount: 0})
         }
     }
 
     private readonly handleWorkerResponse = (e: { data: JSMinerResponse }) => {
-        const {threadIndex, matchedTimes, matchedNonce, totalHashes} = e.data;
+        const {threadIndex, matchedCount, matchedNonce, totalHashes} = e.data;
         const worker = this._workers && this._workers[threadIndex];
         if (!worker) return;
         worker.totalHashes = totalHashes;
-        worker.matchedTimes = matchedTimes;
-        if (matchedNonce !== undefined)
+        worker.matchedCount = matchedCount;
+        if (matchedNonce !== undefined) {
             this._matchedNonce = matchedNonce;
+            const now = performance.now();
+            this._matchTime = now - this.startTime;
+            this.startTime = now;
+        }
     }
 
     stop(): void {
@@ -55,10 +63,14 @@ export class JSMiner implements IMiner {
         return workers.reduce((total, w) => total + w.totalHashes, 0);
     }
 
-    get macthedTimes(): number {
+    get matchedCount(): number {
         const workers = this._workers;
         if (!workers) return 0;
-        return workers.reduce((total, w) => total + w.matchedTimes, 0);
+        return workers.reduce((total, w) => total + w.matchedCount, 0);
+    }
+
+    get matchTime(): number {
+        return this.matchTime;
     }
 
     get matchedNonce(): number | null | undefined {
@@ -77,7 +89,7 @@ export class JSMiner implements IMiner {
 function JSMinerControls(props: { onWorkersChanged(workers: number): void, workers: number, disabled: boolean }) {
     const [workers, setWorkers] = useState(props.workers);
     const {onWorkersChanged, disabled} = props;
-    const workersChanged : ChangeEventHandler<HTMLInputElement> = e => {
+    const workersChanged: ChangeEventHandler<HTMLInputElement> = e => {
         const newWorkers = e.target.valueAsNumber;
         setWorkers(newWorkers);
         props.onWorkersChanged(newWorkers);

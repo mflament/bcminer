@@ -2,12 +2,11 @@ import {ChangeEventHandler, Component} from "react";
 import {HashSelector} from "./HashSelector";
 import {flipEndianness} from "./Utils";
 import {IMiner, MinerId} from "./IMiner";
-import {FSGLMiner} from "./gl/FSGLMiner";
 import {BlockConfig} from "./BlockFetcher";
 
 import "./BCMinerApplication.scss"
 import {JSMiner} from "./js/JSMiner";
-import {VSGLMiner} from "./gl/VSGLMiner";
+import {WebglMiner} from "./gl/WebglMiner";
 
 // hash of block index 239711
 const DEFAULT_HASH = flipEndianness("5c8ad782c007cc563f8db735180b35dab8c983d172b57e2c2701000000000000");
@@ -19,7 +18,8 @@ interface MinerControllerState {
     minerId: MinerId;
     blockConfig?: BlockConfig;
     matchedNonce?: number | null;
-    macthedTimes?: number;
+    matchedCount?: number;
+    matchTime?: number;
     totalHashes: number;
     hps: number;
 }
@@ -30,12 +30,12 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 
     constructor(props: Readonly<MinerControllerProps> | MinerControllerProps) {
         super(props);
-        this.state = {minerId: "glfs", totalHashes: 0, hps: 0};
+        this.state = {minerId: "webgl", totalHashes: 0, hps: 0};
         this._miner = this.createMiner(this.state.minerId);
     }
 
     render() {
-        const {minerId, totalHashes, hps, matchedNonce, macthedTimes} = this.state;
+        const {minerId, totalHashes, hps, matchedNonce, matchedCount, matchTime} = this.state;
         const miner = this._miner;
         const setMiner: ChangeEventHandler<HTMLSelectElement> = e => this.setMiner(e.target.value as MinerId);
         return <div className={"BCMinerApplication"}>
@@ -55,19 +55,19 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
                 </div>
 
                 <div>
-                    <span>Total hashes :</span>
-                    <input disabled={true} value={formatNumber(totalHashes)}/>
+                    <span>Hashed</span>
+                    <span>{formatNumber(totalHashes)}</span>
                 </div>
 
                 <div>
-                    <span>HPS :</span>
-                    <input disabled={true} value={formatNumber(hps)}/>
+                    <span>HPS</span>
+                    <span>{formatNumber(hps)}</span>
                 </div>
 
                 {matchedNonce !== undefined &&
                     <div>
                         <span>Matched nonce : </span>
-                        {matchedNonce === null ? "not found" : <strong>{matchedNonce.toString(16)} (matched {macthedTimes} times)</strong>}
+                        {matchedNonce === null ? "not found" : <strong>{matchedNonce.toString(16).toUpperCase()} (matched {matchedCount} times, matched after {((matchTime || 0) / 1000)?.toFixed(1)} s)</strong>}
                     </div>
                 }
             </div>
@@ -83,15 +83,16 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
         } else if (bc) {
             const startTime = performance.now();
             const getElapsed = () => (performance.now() - startTime) / 1000;
-            this.setState({macthedTimes: 0, matchedNonce: undefined, hps: 0, totalHashes: 0});
-            miner.start(bc, 0xB89BEB3A);
+            this.setState({matchedCount: 0, matchedNonce: undefined, hps: 0, totalHashes: 0});
+            miner.start(bc);
             const refresh = () => {
                 const matchedNonce = miner.matchedNonce;
                 const totalHashes = miner.totalHashes;
-                const macthedTimes = miner.macthedTimes;
+                const matchedCount = miner.matchedCount;
+                const matchTime = miner.matchTime;
                 const elapsed = getElapsed();
                 const hps = elapsed === 0 ? 0 : totalHashes / elapsed;
-                this.setState({matchedNonce, hps, totalHashes, macthedTimes});
+                this.setState({matchedNonce, hps, totalHashes, matchedCount, matchTime});
                 this._refreshTimeId = self.setTimeout(refresh, 1000);
             }
             refresh();
@@ -112,14 +113,11 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
     }
 
     private createMiner(id: MinerId) {
-        if (id === "js") return new JSMiner()
-        if (id === "glfs")
-            return new FSGLMiner()
-        return new VSGLMiner();
+        if (id === "webgl") return new WebglMiner();
+        return new JSMiner();
     }
 }
 
 function formatNumber(n: number) {
-    const mmn = n / 1_000_000;
-    return mmn.toFixed(2);
+    return Math.round(n / 1000).toLocaleString(undefined, {useGrouping: true}) +" K";
 }
