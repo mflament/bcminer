@@ -47,8 +47,10 @@ public class BlockChainInfoClient {
                 .build();
         HttpResponse<InputStream> response = client.send(request, b -> HttpResponse.BodySubscribers.ofInputStream());
         if (response.statusCode() != 200) {
-            String body = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
-            throw new RuntimeException(response.statusCode() + "  : " + body);
+            try (InputStream is = response.body()){
+                String body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                throw new RuntimeException(response.statusCode() + "  : " + body);
+            }
         }
         return response.body();
     }

@@ -45,7 +45,7 @@ public record BlockHeader(int[] data) {
     }
 
     public void nonce(int nonce) {
-        data[NONCE] = Utils.flipEndianess(data[NONCE]);;
+        data[NONCE] = Utils.flipEndianess(data[NONCE]);
     }
 
     public int nbits() {
