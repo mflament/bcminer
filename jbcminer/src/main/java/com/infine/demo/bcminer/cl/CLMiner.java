@@ -39,16 +39,16 @@ public class CLMiner implements IMiner {
     private static final class CLMinerOptions extends MinerOptions {
 
         private final Option<Integer> deviceIndex;
-        private final Option<Integer> groupCount;
-        private final Option<Integer> groupSize;
+        private final Option<Integer> gridSize;
+        private final Option<Integer> blockSize;
         private final Option<Integer> groupNonces;
 
         public CLMinerOptions() {
             super("cl");
             deviceIndex = addInt("device", "OpenCL device index", -1);
-            groupCount = addInt("gc", "number work groups", 48);
-            groupSize = addInt("gs", "work group size", 64);
-            groupNonces = addInt("gn", "nonces per group", 1024 * 1024);
+            gridSize = addInt("gs", "Grid size : number work groups", 64);
+            blockSize = addInt("bs", "Block size : local work size", 64);
+            groupNonces = addInt("gn", "nonce per group", 1024 * 1024);
         }
 
 
@@ -65,7 +65,7 @@ public class CLMiner implements IMiner {
                 }
             }
             device = devices.get(index);
-            return new CLMiner(device, options.get(groupCount), options.get(groupSize), options.get(groupNonces));
+            return new CLMiner(device, options.get(gridSize), options.get(blockSize), options.get(groupNonces));
         }
     }
 
@@ -146,7 +146,7 @@ public class CLMiner implements IMiner {
 //            dumpKernelInfo(device.id(), kernel);
 
             // the buffer for global and local work size
-            System.out.println("Starting opencl miner");
+            System.out.printf("Starting opencl miner using device %s%n", device.name());
             System.out.printf("%d groups x %d nonces (%d threads per group) = %d nonces per pass%n", groupCount, groupNonces, groupThreads, passNonces);
 
             IntBuffer baseNonceBuffer = stack.mallocInt(1);
