@@ -3,6 +3,7 @@ package com.infine.demo.bcminer.java;
 import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
+import com.infine.demo.bcminer.MinerOptions;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,6 +18,22 @@ import static com.infine.demo.bcminer.java.Sha256.H_INTS;
  */
 public class JavaMiner implements IMiner {
 
+    public static final MinerOptions OPTIONS = new JavaMinerOptions();
+
+    private static final class JavaMinerOptions extends MinerOptions {
+        public final Option<Integer> concurrency;
+
+        public JavaMinerOptions() {
+            super("java");
+            concurrency = addInt("threads", "number of mining threads", Runtime.getRuntime().availableProcessors());
+        }
+
+        @Override
+        public IMiner createMiner(ParsedOptions options) {
+            return new JavaMiner(options.get(concurrency));
+        }
+    }
+
     private final int concurrency;
 
     // shared midstate
@@ -30,6 +47,8 @@ public class JavaMiner implements IMiner {
     // number of hash per thread processed so far
     private final int[] threadHashes;
 
+    private final MinerStats stats = new MinerStats();
+
     public JavaMiner(int concurrency) {
         this.concurrency = concurrency;
         threadHashes = new int[concurrency];
@@ -37,12 +56,11 @@ public class JavaMiner implements IMiner {
 
     @Override
     public MinerStats getStats(double elapsedSecs) {
-        long totalHashes = 0;
+        long total = 0;
         for (int threadHash : threadHashes) {
-            totalHashes += threadHash;
+            total += threadHash;
         }
-        elapsedSecs = Math.max(elapsedSecs, 1E-6);
-        return new MinerStats(totalHashes, totalHashes / elapsedSecs);
+        return stats.update(total, elapsedSecs);
     }
 
     @Override

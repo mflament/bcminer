@@ -3,6 +3,7 @@ package com.infine.demo.bcminer.cuda;
 import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
+import com.infine.demo.bcminer.MinerOptions;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.cuda.CU;
 import org.lwjgl.cuda.CUDA;
@@ -25,39 +26,65 @@ import static org.lwjgl.system.MemoryUtil.*;
 
 public class CudaMiner implements IMiner {
 
+    public static final MinerOptions OPTIONS = new CudaMiner.CudaMinerOptions();
+
+    private static final class CudaMinerOptions extends MinerOptions {
+
+        private final Option<Integer> deviceIndex;
+        private final Option<Integer> groupCount;
+        private final Option<Integer> groupSize;
+        private final Option<Integer> groupNonces;
+
+        public CudaMinerOptions() {
+            super("cuda");
+            deviceIndex = addInt("device", "CUDA device index", 0);
+            groupCount = addInt("gs", "grid size", 64);
+            groupSize = addInt("bs", "block size", 64);
+            groupNonces = addInt("gn", "nonces per group per pass", 1024 * 1024);
+        }
+
+        @Override
+        public IMiner createMiner(ParsedOptions options) {
+            return new CudaMiner(options.get(deviceIndex), options.get(groupCount), options.get(groupSize), options.get(groupNonces));
+        }
+    }
+
     private static final String KERNEL_NAME = "mine";
 
     private static final boolean SHOW_PTX = false;
 
-    private final int groupCount;
-    private final int groupSize;
-    private final int chunkSize;
+    private final Device device;
+    private final int gridSize;
+    private final int blockSize;
+    private final int groupNonces;
+    private final MinerStats stats = new MinerStats();
 
     private final Kernel kernel;
     private long ctx;
     private long totalHashes;
 
-    public CudaMiner(int deviceIndex, int groupCount, int groupSize, int chunkSize) {
-        this.groupCount = groupCount;
-        this.groupSize = groupSize;
-        this.chunkSize = chunkSize;
-        Device device = createDevice(deviceIndex);
+
+    public CudaMiner(int deviceIndex, int gridSize, int blockSize, int groupNonces) {
+        this.gridSize = gridSize;
+        this.blockSize = blockSize;
+        this.groupNonces = groupNonces;
+
+        device = createDevice(deviceIndex);
         ctx = createContext(device);
         kernel = createKernel(device);
     }
 
     @Override
     public MinerStats getStats(double elapsedSecs) {
-        return new MinerStats(totalHashes, totalHashes / elapsedSecs);
+        return stats.update(totalHashes, elapsedSecs);
     }
 
     @Override
     public Integer mine(BlockHeader header, int startNonce) {
-        int chunkNonces = chunkSize * groupSize;
         check(cuCtxSetCurrent(ctx));
-
         try (MemoryStack stack = stackPush()) {
             PointerBuffer pp = stack.pointers(0);
+//            dumpInfo(device.device(), kernel.function());
 
             ByteBuffer hostDataBuffer = stack.malloc(13 * Integer.BYTES);
             header.copyData(hostDataBuffer);
@@ -66,39 +93,38 @@ public class CudaMiner implements IMiner {
             long deviceData = pp.get(0);
             check(cuMemcpyHtoD(deviceData, hostDataBuffer));
 
-//            IntBuffer pi = stack.mallocInt(1);
-//            check(cuFuncGetAttribute(pi, CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, kernel.function));
-//            int maxThreadPerBlock = pi.get(0);
-//            System.out.println(maxThreadPerBlock);
-
+            int passNonces = gridSize * groupNonces;
             IntBuffer baseNonce = stack.ints(startNonce);
-            IntBuffer nonceCount = stack.ints(chunkNonces);
+            IntBuffer nonceCount = stack.ints(groupNonces);
             check(cuMemAlloc(pp, 2 * Integer.BYTES));
             long deviceResult = pp.get(0);
 
-            PointerBuffer params = stack.pointers(memAddress(stack.longs(deviceData)),
+            PointerBuffer params = stack.pointers(
+                    memAddress(stack.longs(deviceData)),
                     memAddress(baseNonce),
                     memAddress(nonceCount),
-                    memAddress(stack.longs(deviceResult)));
+                    memAddress(stack.longs(deviceResult))
+            );
 
-            System.out.printf("Starting cuda miner with group count %d, group size %d, chunk size: %d (chunk nonce: %d)%n", groupCount, groupSize, chunkSize, chunkNonces);
+            System.out.println("Starting cuda miner");
+            System.out.printf("%d groups x %d nonces (%d threads per group) = %d nonces per pass%n", gridSize, groupNonces, blockSize, passNonces);
 
             IntBuffer hostResult = stack.ints(0, 0);
             totalHashes = 0;
             int nonce = startNonce;
             while (totalHashes < 0xFFFFFFFFL) {
                 baseNonce.put(0, nonce);
-                check(cuLaunchKernel(kernel.function, groupCount, 1, 1, // grid dim
-                        groupSize, 1, 1, // block dim
-                        groupSize * Integer.BYTES, 0,
+                check(cuLaunchKernel(kernel.function, gridSize, 1, 1, // grid dim
+                        blockSize, 1, 1, // block dim
+                        blockSize * Integer.BYTES, 0,
                         params, null));
                 cuCtxSynchronize();
                 // read result
                 check(cuMemcpyDtoH(hostResult, deviceResult));
                 if (hostResult.get(0) != 0)
                     break;
-                totalHashes += chunkNonces;
-                nonce += chunkNonces;
+                totalHashes += passNonces;
+                nonce += passNonces;
             }
 
             Integer matchedNonce = hostResult.get(0) != 0 ? hostResult.get(1) : null;
@@ -107,7 +133,6 @@ public class CudaMiner implements IMiner {
             return matchedNonce;
         }
     }
-
 
     @Override
     public void close() {
@@ -133,25 +158,25 @@ public class CudaMiner implements IMiner {
                 throw new IllegalStateException("Error: no devices supporting CUDA");
             }
 
-            // get first CUDA device
+            // get CUDA device from index
             check(cuDeviceGet(pi, deviceIndex));
             int device = pi.get(0);
 
             // get device name
             ByteBuffer pb = stack.malloc(100);
             check(cuDeviceGetName(pb, device));
-            System.out.format("> Using device 0: %s\n", memASCII(memAddress(pb)));
+            System.out.format("> Using device %d: %s\n", deviceIndex, memASCII(memAddress(pb)));
 
             // get compute capabilities and the device name
-            IntBuffer minor = stack.mallocInt(1);
-            check(cuDeviceComputeCapability(pi, minor, device));
-            System.out.format("> GPU Device has SM %d.%d compute capability\n", pi.get(0), minor.get(0));
+            IntBuffer major = stack.mallocInt(1), minor = stack.mallocInt(1);
+            check(cuDeviceComputeCapability(major, minor, device));
+            System.out.format("> GPU Device has SM %d.%d compute capability\n", major.get(0), minor.get(0));
 
             // get memory size
             check(cuDeviceTotalMem(pp, device));
             System.out.format("  Total amount of global memory:   %d bytes\n", pp.get(0));
             System.out.format("  64-bit Memory Address:           %s\n", (pp.get(0) > 4 * 1024 * 1024 * 1024L) ? "YES" : "NO");
-            return new Device(device, pi.get(0), minor.get(0));
+            return new Device(device, major.get(0), minor.get(0));
         }
     }
 
@@ -250,8 +275,43 @@ public class CudaMiner implements IMiner {
     }
 
 
+    private static void dumpInfo(int device, long function) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            IntBuffer attr = stack.mallocInt(1);
+            System.out.println("Device ");
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK %d%n", attr.get(0));
+            cuDeviceGetAttribute(attr, CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, device);
+            System.out.printf("CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR %d%n", attr.get(0));
+            System.out.println("Function ");
+            cuFuncGetAttribute(attr, CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, function);
+            System.out.printf("CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK %d%n", attr.get(0));
+            cuFuncGetAttribute(attr, CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES, function);
+            System.out.printf("CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES %d%n", attr.get(0));
+            cuFuncGetAttribute(attr, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, function);
+            System.out.printf("CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES %d%n", attr.get(0));
+            cuFuncGetAttribute(attr, CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, function);
+            System.out.printf("CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES %d%n", attr.get(0));
+            cuFuncGetAttribute(attr, CU_FUNC_ATTRIBUTE_NUM_REGS, function);
+            System.out.printf("CU_FUNC_ATTRIBUTE_NUM_REGS %d%n", attr.get(0));
+        }
+    }
+
+
     public static void main(String[] args) throws InterruptedException {
-        Bench.start(() -> new CudaMiner(0, 16, 256, 1024 * 1024), 0);
+        Bench.start(() -> new CudaMiner(0, 48, 64, 1024 * 1024), -1);
     }
 
 }

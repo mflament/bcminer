@@ -1,9 +1,10 @@
 import * as path from "path";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import 'webpack-dev-server';
+import webpack from "webpack";
 
-const mode =  process.env.NODE_ENV === "production" ? "production" : "development"
-const config = {
+const mode = process.env.NODE_ENV === "production" ? "production" : "development"
+const config: webpack.Configuration = {
     mode,
     entry: ['./src/index.tsx', './src/js/JSMinerWorker.ts'],
     plugins: [

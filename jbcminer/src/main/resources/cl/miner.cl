@@ -78,6 +78,14 @@ void clear(uint* array, const int start, const int end)
 		array[i] = 0;
 }
 
+void print_buffer(const uint* buffer, const int length)
+{
+    for (int i = 0; i < length; i++) {
+        printf("%u ", buffer[i]);
+    }
+    printf("\n");
+}
+
 void processBlock(uint* wb, uint* target)
 {
 	int i;
@@ -109,6 +117,8 @@ void processBlock(uint* wb, uint* target)
 		a = T1 + T2;
 	}
 
+//    printf("%u %u %u %u %u %u %u %u\n",a,b,c,d,e,f,g,h);
+
 	target[0] += a;
 	target[1] += b;
 	target[2] += c;
@@ -129,7 +139,7 @@ bool test_hash(const int hMaskOffset, const uint hMask, uint* hash)
 	return sum == 0;
 }
 
-void hash_block(local const uint header[3], local const uint midstate[H_INTS], uint nonce, uint* workBuffer, uint* hash)
+void hash_block(const uint header[3], const uint midstate[H_INTS], uint nonce, uint* workBuffer, uint* hash)
 {
 	workBuffer[0] = header[0]; // last int of merkel root
 	workBuffer[1] = header[1]; // time
@@ -164,40 +174,38 @@ void hash_block(local const uint header[3], local const uint midstate[H_INTS], u
 *
 * Result : [0] boolean:matched [1] matched nonce
 **/
-kernel void hash_nonces(constant uint* globalData, const uint baseNonce, const uint nonceCount, global uint* result, local int* localMatches)
+kernel void hash_nonces(constant uint* globalData, const uint baseNonce, const uint groupNonces, global int* result, local int* localMatches)
 {
-    local uint header[3];
-    local uint midstate[8];
+    uint header[3];
+    uint midstate[8];
+	uint workBuffer[BUFFER_INTS];
+	uint hash[H_INTS];
 
     int hMaskOffset = (int)globalData[11];
     uint hMask = globalData[12];
 
-	uint workBuffer[BUFFER_INTS];
-	uint hash[H_INTS];
-
     uint groupCount = get_num_groups(0);
-    uint groupNonces = nonceCount / groupCount;
     uint groupId = get_group_id(0);
     uint localId = get_local_id(0);
     uint groupSize = get_local_size(0);
-
-    uint startNonce = baseNonce + groupId * groupNonces + localId;
 
 //    if (groupId == 0 && localId == 0) {
 //        printf("groupCount: %d ; groupNonces: %d ; groupSize: %d\n", groupCount, groupNonces, groupSize);
 //    }
 
-    for (int i = localId; i < 3; i += groupSize) header[i] = globalData[i];
-    for (int i = localId; i < 8; i += groupSize) midstate[i] = globalData[3 + i];
+    for (int i = 0; i < 3; i ++) header[i] = globalData[i];
+    for (int i = 0; i < 8; i ++) midstate[i] = globalData[3 + i];
     localMatches[localId] = -1;
     barrier(CLK_LOCAL_MEM_FENCE);
 
+    uint startNonce = baseNonce + groupId * groupNonces + localId;
     uint nonce;
+    int expected = 0;
     for (uint i = 0; i < groupNonces; i += groupSize) {
         nonce = startNonce + i;
         hash_block(header, midstate, nonce, workBuffer, hash);
         if (test_hash(hMaskOffset, hMask, hash)) {
-            // printf("nonce matched: group id %u local id: %u nonce: %u\n", groupId, localId, nonce);
+//            print_buffer(hash, H_INTS);
             localMatches[localId] = localId;
         }
         barrier(CLK_LOCAL_MEM_FENCE);
@@ -208,15 +216,12 @@ kernel void hash_nonces(constant uint* globalData, const uint baseNonce, const u
             barrier(CLK_LOCAL_MEM_FENCE);
         }
         if (localId == 0 && localMatches[0] >= 0) {
-            // printf("matched by local id %d\n", localMatches[0]);
-            result[0] = 1;
-            result[1] = nonce + localMatches[0];
+//            printf("matched by local id %d\n", localMatches[0]);
+            if (atomic_compare_exchange_strong((global atomic_int*)&result[0], &expected, 1)) {
+                result[1] = nonce + localMatches[0];
+            }
         }
-        barrier(CLK_GLOBAL_MEM_FENCE);
-        if (result[0] != 0) {
-            // printf("nonce matched: group id %d local id: %d result: %d\n", groupId, localId, result[0]);
+        if (result[0] != 0)
             break;
-        }
     }
-
 }

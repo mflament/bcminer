@@ -7,6 +7,7 @@ import {BlockConfig} from "./BlockFetcher";
 import "./BCMinerApplication.scss"
 import {JSMiner} from "./js/JSMiner";
 import {WebglMiner} from "./gl/WebglMiner";
+import {WebpuMiner} from "./webgpu/WebpuMiner";
 
 // hash of block index 239711
 const DEFAULT_HASH = flipEndianness("5c8ad782c007cc563f8db735180b35dab8c983d172b57e2c2701000000000000");
@@ -43,7 +44,8 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
             <div className="miner-config">
                 Miner :
                 <select onChange={setMiner} value={minerId}>
-                    <option value="glfs">Webgl FS</option>
+                    <option value="webgl">Webgl</option>
+                    <option value="webgpu">Webgpu</option>
                     <option value="js">JS</option>
                 </select>
                 {miner?.controls}
@@ -114,6 +116,7 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 
     private createMiner(id: MinerId) {
         if (id === "webgl") return new WebglMiner();
+        if (id === "webgpu") return new WebpuMiner();
         return new JSMiner();
     }
 }
