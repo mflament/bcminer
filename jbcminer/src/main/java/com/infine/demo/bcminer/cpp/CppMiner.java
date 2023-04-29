@@ -3,6 +3,7 @@ package com.infine.demo.bcminer.cpp;
 import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
+import com.infine.demo.bcminer.MinerStats;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.ByteBuffer;
@@ -11,11 +12,10 @@ import java.nio.LongBuffer;
 public class CppMiner implements IMiner {
 
     private final MinerStats stats = new MinerStats();
-    private long totalHashes;
 
     @Override
-    public MinerStats getStats(double elapsedSecs) {
-        return stats.update(totalHashes, elapsedSecs);
+    public MinerStats getStats() {
+        return stats;
     }
 
     @Override

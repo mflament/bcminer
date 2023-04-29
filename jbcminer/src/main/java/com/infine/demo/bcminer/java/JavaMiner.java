@@ -4,8 +4,8 @@ import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 import com.infine.demo.bcminer.MinerOptions;
+import com.infine.demo.bcminer.MinerStats;
 
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -44,23 +44,15 @@ public class JavaMiner implements IMiner {
 
     private final AtomicReference<Integer> matchedNonce = new AtomicReference<>(null);
 
-    // number of hash per thread processed so far
-    private final int[] threadHashes;
-
     private final MinerStats stats = new MinerStats();
 
     public JavaMiner(int concurrency) {
         this.concurrency = concurrency;
-        threadHashes = new int[concurrency];
     }
 
     @Override
-    public MinerStats getStats(double elapsedSecs) {
-        long total = 0;
-        for (int threadHash : threadHashes) {
-            total += threadHash;
-        }
-        return stats.update(total, elapsedSecs);
+    public MinerStats getStats() {
+        return stats;
     }
 
     @Override
@@ -68,8 +60,8 @@ public class JavaMiner implements IMiner {
         hashPredicate = header.hashPredicate();
         Sha256.createMidstate(midstate, header);
         ThreadGroup threadGroup = new ThreadGroup("BCMiner");
-        Arrays.fill(threadHashes, 0);
         System.out.printf("Starting JavaMiner with %d threads%n", concurrency);
+        stats.start();
         for (int i = 0; i < concurrency - 1; i++) {
             final int threadIndex = i;
             new Thread(threadGroup, () -> miningTask(header, startNonce, threadIndex), "BCMiner[" + i + "]").start();
@@ -90,13 +82,20 @@ public class JavaMiner implements IMiner {
         int[] data = header.data(), hash = new int[H_INTS], workBuffer = new int[Sha256.BUFFER_INTS];
 
         long nonce = startNonce + threadIndex;
+        int chunk = 0;
         while (matchedNonce.get() == null && nonce < 0xFFFFFFFFL) {
             Sha256.updateHash(hash, data, midstate, workBuffer, (int) nonce);
             if (hashPredicate.test(hash))
                 matchedNonce.set((int) nonce);
-            threadHashes[threadIndex]++;
+            chunk++;
+            if (chunk == 1000) {
+                stats.update(chunk);
+                chunk = 0;
+            }
             nonce = nonce + concurrency;
         }
+        if (chunk > 0)
+            stats.update(chunk);
     }
 
     public static void main(String[] args) throws InterruptedException {

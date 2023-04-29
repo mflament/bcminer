@@ -25,21 +25,16 @@ public class Bench {
         int startNonce = count < 0 ? -1 : (int) (Integer.toUnsignedLong(expectedNonce) - count);
 
         CompletableFuture<Integer> future = new CompletableFuture<>();
-        long startTime = System.currentTimeMillis();
         new Thread(() -> start(future, miner, header, startNonce)).start();
-        double elapsedSecs;
         while (!await(future)) {
-            elapsedSecs = (System.currentTimeMillis() - startTime) * 1E-3;
-            System.out.println(miner.getStats(elapsedSecs));
+            System.out.println(miner.getStats());
         }
-
-        elapsedSecs = (System.currentTimeMillis() - startTime) * 1E-3;
-        System.out.println(miner.getStats(elapsedSecs));
+        System.out.println(miner.getStats());
         Integer nonce = get(future);
         if (nonce == null)
-            System.out.printf("Nonce not found (%.2f s)%n", elapsedSecs);
+            System.out.printf("Nonce not found%n");
         else
-            System.out.printf("Matched nonce %s (%.2f s)%n", Integer.toUnsignedLong(nonce), elapsedSecs);
+            System.out.printf("Matched nonce %s%n", Integer.toUnsignedLong(nonce));
     }
 
     private static void start(CompletableFuture<Integer> future, IMiner miner, BlockHeader header, int startNonce) {

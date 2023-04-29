@@ -4,6 +4,7 @@ import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 import com.infine.demo.bcminer.MinerOptions;
+import com.infine.demo.bcminer.MinerStats;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.cuda.CU;
 import org.lwjgl.cuda.CUDA;
@@ -38,7 +39,7 @@ public class CudaMiner implements IMiner {
         public CudaMinerOptions() {
             super("cuda");
             deviceIndex = addInt("device", "CUDA device index", 0);
-            groupCount = addInt("gs", "grid size", 64);
+            groupCount = addInt("gs", "grid size", 48);
             groupSize = addInt("bs", "block size", 64);
             groupNonces = addInt("gn", "nonces per group per pass", 1024 * 1024);
         }
@@ -61,8 +62,6 @@ public class CudaMiner implements IMiner {
 
     private final Kernel kernel;
     private long ctx;
-    private long totalHashes;
-
 
     public CudaMiner(int deviceIndex, int gridSize, int blockSize, int groupNonces) {
         this.gridSize = gridSize;
@@ -75,8 +74,8 @@ public class CudaMiner implements IMiner {
     }
 
     @Override
-    public MinerStats getStats(double elapsedSecs) {
-        return stats.update(totalHashes, elapsedSecs);
+    public MinerStats getStats() {
+        return stats;
     }
 
     @Override
@@ -110,9 +109,9 @@ public class CudaMiner implements IMiner {
             System.out.printf("%d groups x %d nonces (%d threads per group) = %d nonces per pass%n", gridSize, groupNonces, blockSize, passNonces);
 
             IntBuffer hostResult = stack.ints(0, 0);
-            totalHashes = 0;
             int nonce = startNonce;
-            while (totalHashes < 0xFFFFFFFFL) {
+            stats.start();
+            while (stats.totalHashes() < 0xFFFFFFFFL) {
                 baseNonce.put(0, nonce);
                 check(cuLaunchKernel(kernel.function, gridSize, 1, 1, // grid dim
                         blockSize, 1, 1, // block dim
@@ -121,9 +120,12 @@ public class CudaMiner implements IMiner {
                 cuCtxSynchronize();
                 // read result
                 check(cuMemcpyDtoH(hostResult, deviceResult));
-                if (hostResult.get(0) != 0)
+                if (hostResult.get(0) != 0) {
+                    int matched = hostResult.get(1);
+                    stats.update((int) (Integer.toUnsignedLong(matched) - Integer.toUnsignedLong(nonce)));
                     break;
-                totalHashes += passNonces;
+                }
+                stats.update(passNonces);
                 nonce += passNonces;
             }
 

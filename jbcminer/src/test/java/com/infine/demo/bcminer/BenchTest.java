@@ -32,8 +32,8 @@ class BenchTest {
         private final MinerStats stats = new MinerStats();
 
         @Override
-        public MinerStats getStats(double elapsedSecs) {
-            return stats.update(total, elapsedSecs);
+        public MinerStats getStats() {
+            return stats.update(0);
         }
 
         @Override
@@ -52,8 +52,8 @@ class BenchTest {
         private final MinerStats stats = new MinerStats();
 
         @Override
-        public MinerStats getStats(double elapsedSecs) {
-            return stats.update(total, elapsedSecs);
+        public MinerStats getStats() {
+            return stats.update(0);
         }
 
         @Override

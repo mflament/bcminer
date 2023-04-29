@@ -4,6 +4,7 @@ import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 import com.infine.demo.bcminer.MinerOptions;
+import com.infine.demo.bcminer.MinerStats;
 import com.infine.demo.bcminer.cl.clsupport.CLContext;
 import com.infine.demo.bcminer.cl.clsupport.CLDevice;
 import com.infine.demo.bcminer.cl.clsupport.CLException;
@@ -45,7 +46,7 @@ public class CLMiner implements IMiner {
         public CLMinerOptions() {
             super("cl");
             deviceIndex = addInt("device", "OpenCL device index", -1);
-            groupCount = addInt("gc", "number work groups", 64);
+            groupCount = addInt("gc", "number work groups", 48);
             groupSize = addInt("gs", "work group size", 64);
             groupNonces = addInt("gn", "nonces per group", 1024 * 1024);
         }
@@ -68,21 +69,6 @@ public class CLMiner implements IMiner {
         }
     }
 
-    public static final class CLMinerStats extends MinerStats {
-        double kps; // kernel pass per seconds
-
-        public CLMinerStats update(long total, double elapsed, long kernelCalls) {
-            super.update(total, elapsed);
-            this.kps = kernelCalls / elapsed;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return super.toString() + String.format(" kps: %.3f", kps);
-        }
-    }
-
     // kernel arguments index
     private static final int GLOBAL_DATA = 0;
     private static final int BASE_NONCE = 1;
@@ -100,9 +86,7 @@ public class CLMiner implements IMiner {
     private final long kernel;
     private final long queue;
 
-    private long kernelCalls;
-    private long totalHashes;
-    private final CLMinerStats stats = new CLMinerStats();
+    private final MinerStats stats = new MinerStats();
 
     public CLMiner(CLDevice device, int groupCount, int groupThreads, int groupNonces) {
         this.device = Objects.requireNonNull(device, "device is null");
@@ -116,7 +100,7 @@ public class CLMiner implements IMiner {
         this.groupNonces = groupNonces;
 
         context = CLContext.create(device);
-        program = CLProgram.buildProgram(context, loadProgram("miner.cl"), null).id();
+        program = CLProgram.buildProgram(context, loadProgram(), null).id();
         kernel = CLKernel.getKernel(program, "hash_nonces").id();
         int[] errorBuffer = new int[1];
         queue = clCreateCommandQueue(context.id(), device.id(), 0, errorBuffer);
@@ -124,8 +108,8 @@ public class CLMiner implements IMiner {
     }
 
     @Override
-    public MinerStats getStats(double elapsedSecs) {
-        return stats.update(totalHashes, elapsedSecs, kernelCalls);
+    public MinerStats getStats() {
+        return stats;
     }
 
     @Override
@@ -144,7 +128,7 @@ public class CLMiner implements IMiner {
                     2 * Integer.BYTES, errorBuffer);
             check(errorBuffer.get(0));
 
-            long passNonces = (long) groupCount * groupNonces;
+            int passNonces = groupCount * groupNonces;
             clSetKernelArg(kernel, GLOBAL_DATA, ptr.put(0, clBlockData));
             clSetKernelArg(kernel, GROUP_NONCES, new int[]{groupNonces}); // nonces per workgroup
             clSetKernelArg(kernel, RESULT, ptr.put(0, clResult)); // result
@@ -170,8 +154,8 @@ public class CLMiner implements IMiner {
             PointerBuffer event = stack.mallocPointer(1);
 
             int nonce = startNonce;
-            totalHashes = 0;
-            while (totalHashes < 0xFFFFFFFFL) {
+            stats.start();
+            while (stats.totalHashes() < 0xFFFFFFFFL) {
                 baseNonceBuffer.put(0, nonce);
                 clSetKernelArg(kernel, BASE_NONCE, baseNonceBuffer); // baseNonce
                 check(clEnqueueNDRangeKernel(queue, kernel, work_dim, null, gws, lws, null, event));
@@ -179,11 +163,10 @@ public class CLMiner implements IMiner {
                 check(clEnqueueReadBuffer(queue, clResult, true, 0, resultsBuffer, event, null));
                 if (resultsBuffer.get(0) != 0) {
                     int matched = resultsBuffer.get(1);
-                    totalHashes += Integer.toUnsignedLong(matched) - Integer.toUnsignedLong(nonce);
+                    stats.update((int) (Integer.toUnsignedLong(matched) - Integer.toUnsignedLong(nonce)));
                     break;
                 }
-                totalHashes += passNonces;
-                kernelCalls++;
+                stats.update(passNonces);
                 nonce += passNonces;
             }
 
@@ -206,8 +189,8 @@ public class CLMiner implements IMiner {
         clReleaseDevice(device.id());
     }
 
-    private static String loadProgram(String name) {
-        try (InputStream is = CLMiner.class.getResourceAsStream("/cl/" + name)) {
+    private static String loadProgram() {
+        try (InputStream is = CLMiner.class.getResourceAsStream("/cl/miner.cl")) {
             if (is == null) throw new FileNotFoundException("program not found");
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
