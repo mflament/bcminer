@@ -9,6 +9,10 @@ public class MinerStats {
         return totalHashes;
     }
 
+    public double totalTime() {
+        return totalTime;
+    }
+
     /**
      * milion H per sec
      */

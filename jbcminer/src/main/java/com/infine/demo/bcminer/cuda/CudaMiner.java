@@ -1,6 +1,5 @@
 package com.infine.demo.bcminer.cuda;
 
-import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 import com.infine.demo.bcminer.MinerOptions;
@@ -19,6 +18,10 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import static org.lwjgl.cuda.CU.*;
 import static org.lwjgl.cuda.NVRTC.*;
@@ -55,13 +58,14 @@ public class CudaMiner implements IMiner {
     private static final boolean SHOW_PTX = false;
 
     private final Device device;
-    private final int gridSize;
-    private final int blockSize;
-    private final int groupNonces;
     private final MinerStats stats = new MinerStats();
-
     private final Kernel kernel;
     private long ctx;
+
+    private int gridSize;
+    private int blockSize;
+    private int groupNonces;
+    private double maxSecs = Double.MIN_VALUE;
 
     public CudaMiner(int deviceIndex, int gridSize, int blockSize, int groupNonces) {
         this.gridSize = gridSize;
@@ -83,7 +87,8 @@ public class CudaMiner implements IMiner {
         check(cuCtxSetCurrent(ctx));
         try (MemoryStack stack = stackPush()) {
             PointerBuffer pp = stack.pointers(0);
-//            dumpInfo(device.device(), kernel.function());
+            //noinspection ConstantValue
+            if (false) dumpInfo(device.device(), kernel.function());
 
             ByteBuffer hostDataBuffer = stack.malloc(13 * Integer.BYTES);
             header.copyData(hostDataBuffer);
@@ -126,6 +131,8 @@ public class CudaMiner implements IMiner {
                     break;
                 }
                 stats.update(passNonces);
+                if (stats.totalTime() > maxSecs)
+                    break;
                 nonce += passNonces;
             }
 
@@ -312,8 +319,38 @@ public class CudaMiner implements IMiner {
     }
 
 
-    public static void main(String[] args) throws InterruptedException {
-        Bench.start(() -> new CudaMiner(0, 48, 64, 1024 * 1024), -1);
+    private static String toCSV(Object... values) {
+        return Arrays.stream(values).map(Object::toString).collect(Collectors.joining(",")) + "\n";
+    }
+
+    public static void main(String[] args) throws IOException {
+//        int[] gridSizes = new int[]{16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76};
+//        int[] blockSizes = new int[]{32, 64, 128, 256};
+//        int[] blockNonces = new int[]{1024 * 256, 1024 * 512, 1024 * 1024, 1024 * 2048};
+        int[] gridSizes = new int[]{48};
+        int[] blockSizes = new int[]{64};
+        int[] blockNonces = new int[]{1024 * 2048};
+        BlockHeader header = BlockHeader.testHeader();
+        StringBuilder csv = new StringBuilder();
+        csv.append(toCSV("gridSize", "blockSize", "groupNonces", "matched", "totalTime", "totalHashes", "mhps"));
+        try (CudaMiner miner = new CudaMiner(0, 0, 0, 0)) {
+            miner.maxSecs = 15;
+            for (int gridSize : gridSizes) {
+                miner.gridSize = gridSize;
+                for (int blockSize : blockSizes) {
+                    miner.blockSize = blockSize;
+                    for (int groupNonces : blockNonces) {
+                        miner.groupNonces = groupNonces;
+                        boolean matched = miner.mine(header, -1) != null;
+                        String row = toCSV(gridSize, blockSize, groupNonces, matched, miner.stats.totalTime(), miner.stats.totalHashes(), miner.stats.mhps());
+                        csv.append(row);
+                        System.out.println(row);
+                    }
+                }
+            }
+        }
+        Files.writeString(Path.of("cuda-stats.csv"), csv.toString());
+//        Bench.start(() -> new CudaMiner(0, 48, 64, 1024 * 1024), -1);
     }
 
 }

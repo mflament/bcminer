@@ -45,7 +45,7 @@ public record BlockHeader(int[] data) {
     }
 
     public void nonce(int nonce) {
-        data[NONCE] = Utils.flipEndianess(data[NONCE]);
+        data[NONCE] = Utils.flipEndianess(nonce);
     }
 
     public int nbits() {
@@ -67,7 +67,7 @@ public record BlockHeader(int[] data) {
         return new HashPredicate(hOffset, mask);
     }
 
-    static BlockHeader testHeader() {
+    public static BlockHeader testHeader() {
         ObjectMapper om = BlockChainResponse.createObjectMapper();
         try (InputStream is = Bench.class.getResourceAsStream("/block_239711.json")) {
             BlockChainResponse bcr = om.readValue(is, BlockChainResponse.class);
