@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
@@ -30,7 +31,7 @@ public final class CLUtil {
             List<CLDevice> platformDevices = platform.getDevices();
             devices.addAll(platformDevices);
         }
-        return devices;
+        return Collections.unmodifiableList(devices);
     }
 
     @Nullable
@@ -60,7 +61,6 @@ public final class CLUtil {
                 platform = devicePlatform;
             }
             prompt.append(String.format("    %2d : %s (%s / %s)%n", devices.size(), device.name(), device.vendor(), device.openCLVersion()));
-            devices.add(device);
         }
         prompt.append("-1 : Exit");
         System.out.println(prompt);
