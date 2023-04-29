@@ -9,8 +9,8 @@ class BenchTest {
     @Test
     void benchAll() throws InterruptedException {
         TestMiner miner = new TestMiner();
-        Bench.start(() -> miner, 0);
-        assertEquals(Integer.toUnsignedLong(TestHeader.EXPECTED_NONCE), miner.total);
+        Bench.start(() -> miner, -1);
+        assertEquals(Integer.toUnsignedLong(TestHeader.EXPECTED_NONCE) + 1, miner.total);
     }
 
     @Test
