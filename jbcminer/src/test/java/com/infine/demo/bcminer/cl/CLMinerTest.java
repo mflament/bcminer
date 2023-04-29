@@ -5,6 +5,8 @@ import com.infine.demo.bcminer.cl.clsupport.CLDevice;
 import com.infine.demo.bcminer.cl.clsupport.CLUtil;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -12,7 +14,9 @@ class CLMinerTest {
 
     @Test
     void mine() {
-        CLDevice clDevice = CLUtil.selectDevice();
+        CLUtil.selectDevice();
+        List<CLDevice> clDevices = CLUtil.listDevices();
+        CLDevice clDevice = clDevices.isEmpty() ? null : clDevices.get(0);
         if (clDevice == null)
             throw new AssertionError("No opencl device");
         try (var miner = new CLMiner(clDevice, 16, 256, 1024)) {
@@ -22,4 +26,7 @@ class CLMinerTest {
         }
     }
 
+    public static void main(String[] args) {
+        new CLMinerTest().mine();
+    }
 }

@@ -54,15 +54,16 @@ public final class CLUtil {
         Scanner scanner = new Scanner(System.in);
         StringBuffer prompt = new StringBuffer();
         String platform = null;
+        int index = 0;
         for (CLDevice device : devices) {
             String devicePlatform = device.platform().name();
             if (!Objects.equals(platform, devicePlatform)) {
                 prompt.append(devicePlatform).append(LS);
                 platform = devicePlatform;
             }
-            prompt.append(String.format("    %2d : %s (%s / %s)%n", devices.size(), device.name(), device.vendor(), device.openCLVersion()));
+            prompt.append(String.format("    %2d : %s (%s / %s)%n", index++, device.name(), device.vendor(), device.openCLVersion()));
         }
-        prompt.append("-1 : Exit");
+        prompt.append("  -1 : Exit");
         System.out.println(prompt);
         while (true) {
             String input = scanner.nextLine();
