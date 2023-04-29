@@ -38,16 +38,16 @@ public class CLMiner implements IMiner {
     private static final class CLMinerOptions extends MinerOptions {
 
         private final Option<Integer> deviceIndex;
-        private final Option<Integer> groupCount;
-        private final Option<Integer> groupSize;
+        private final Option<Integer> gridSize;
+        private final Option<Integer> blockSize;
         private final Option<Integer> groupNonces;
 
         public CLMinerOptions() {
             super("cl");
             deviceIndex = addInt("device", "OpenCL device index", -1);
-            groupCount = addInt("gc", "number work groups", 64);
-            groupSize = addInt("gs", "work group size", 64);
-            groupNonces = addInt("gn", "nonces per group", 1024 * 1024);
+            gridSize = addInt("gs", "Grid size : number work groups", 64);
+            blockSize = addInt("bs", "Block size : local work size", 64);
+            groupNonces = addInt("gn", "nonce per group", 1024 * 1024);
         }
 
 
@@ -56,7 +56,7 @@ public class CLMiner implements IMiner {
             List<CLDevice> devices = CLUtil.listDevices();
             int index = options.get(deviceIndex);
             CLDevice device;
-            if (index < 0 || index < devices.size()) {
+            if (index < 0 || index >= devices.size()) {
                 index = selectDevice(devices);
                 if (index < 0) {
                     System.exit(1);
@@ -64,7 +64,7 @@ public class CLMiner implements IMiner {
                 }
             }
             device = devices.get(index);
-            return new CLMiner(device, options.get(groupCount), options.get(groupSize), options.get(groupNonces));
+            return new CLMiner(device, options.get(gridSize), options.get(blockSize), options.get(groupNonces));
         }
     }
 
@@ -116,7 +116,7 @@ public class CLMiner implements IMiner {
         this.groupNonces = groupNonces;
 
         context = CLContext.create(device);
-        program = CLProgram.buildProgram(context, loadProgram("miner.cl"), null).id();
+        program = CLProgram.buildProgram(context, loadProgram(), null).id();
         kernel = CLKernel.getKernel(program, "hash_nonces").id();
         int[] errorBuffer = new int[1];
         queue = clCreateCommandQueue(context.id(), device.id(), 0, errorBuffer);
@@ -162,7 +162,7 @@ public class CLMiner implements IMiner {
 //            dumpKernelInfo(device.id(), kernel);
 
             // the buffer for global and local work size
-            System.out.println("Starting opencl miner");
+            System.out.printf("Starting opencl miner using device %s%n", device.name());
             System.out.printf("%d groups x %d nonces (%d threads per group) = %d nonces per pass%n", groupCount, groupNonces, groupThreads, passNonces);
 
             IntBuffer baseNonceBuffer = stack.mallocInt(1);
@@ -206,8 +206,8 @@ public class CLMiner implements IMiner {
         clReleaseDevice(device.id());
     }
 
-    private static String loadProgram(String name) {
-        try (InputStream is = CLMiner.class.getResourceAsStream("/cl/" + name)) {
+    private static String loadProgram() {
+        try (InputStream is = CLMiner.class.getResourceAsStream("/cl/miner.cl")) {
             if (is == null) throw new FileNotFoundException("program not found");
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
