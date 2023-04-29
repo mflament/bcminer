@@ -1,5 +1,6 @@
 package com.infine.demo.bcminer.cuda;
 
+import com.infine.demo.bcminer.Bench;
 import com.infine.demo.bcminer.BlockHeader;
 import com.infine.demo.bcminer.IMiner;
 import com.infine.demo.bcminer.MinerOptions;
@@ -42,9 +43,9 @@ public class CudaMiner implements IMiner {
         public CudaMinerOptions() {
             super("cuda");
             deviceIndex = addInt("device", "CUDA device index", 0);
-            groupCount = addInt("gs", "grid size", 48);
-            groupSize = addInt("bs", "block size", 64);
-            groupNonces = addInt("gn", "nonces per group per pass", 1024 * 1024);
+            groupCount = addInt("gs", "grid size", 28);
+            groupSize = addInt("bs", "block size", 128);
+            groupNonces = addInt("gn", "nonces per group per pass", 1024 * 2048);
         }
 
         @Override
@@ -65,7 +66,7 @@ public class CudaMiner implements IMiner {
     private int gridSize;
     private int blockSize;
     private int groupNonces;
-    private double maxSecs = Double.MIN_VALUE;
+    private double maxSecs = Double.MAX_VALUE;
 
     public CudaMiner(int deviceIndex, int gridSize, int blockSize, int groupNonces) {
         this.gridSize = gridSize;
@@ -323,13 +324,18 @@ public class CudaMiner implements IMiner {
         return Arrays.stream(values).map(Object::toString).collect(Collectors.joining(",")) + "\n";
     }
 
-    public static void main(String[] args) throws IOException {
-//        int[] gridSizes = new int[]{16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76};
-//        int[] blockSizes = new int[]{32, 64, 128, 256};
-//        int[] blockNonces = new int[]{1024 * 256, 1024 * 512, 1024 * 1024, 1024 * 2048};
-        int[] gridSizes = new int[]{48};
-        int[] blockSizes = new int[]{64};
+    public static void main(String[] args) throws InterruptedException {
+//        testGridSizes();
+        Bench.start(() -> new CudaMiner(0, 28, 128, 1024 * 1024), -1);
+    }
+
+    private static void testGridSizes() throws IOException {
+        int[] gridSizes = new int[]{16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76};
+        int[] blockSizes = new int[]{32, 64, 128, 256};
         int[] blockNonces = new int[]{1024 * 2048};
+//        int[] gridSizes = new int[]{48};
+//        int[] blockSizes = new int[]{64};
+//        int[] blockNonces = new int[]{1024 * 2048};
         BlockHeader header = BlockHeader.testHeader();
         StringBuilder csv = new StringBuilder();
         csv.append(toCSV("gridSize", "blockSize", "groupNonces", "matched", "totalTime", "totalHashes", "mhps"));
@@ -350,7 +356,6 @@ public class CudaMiner implements IMiner {
             }
         }
         Files.writeString(Path.of("cuda-stats.csv"), csv.toString());
-//        Bench.start(() -> new CudaMiner(0, 48, 64, 1024 * 1024), -1);
     }
 
 }

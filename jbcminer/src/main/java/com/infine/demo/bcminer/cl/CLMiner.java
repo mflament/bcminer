@@ -46,11 +46,10 @@ public class CLMiner implements IMiner {
         public CLMinerOptions() {
             super("cl");
             deviceIndex = addInt("device", "OpenCL device index", -1);
-            gridSize = addInt("gs", "Grid size : number work groups", 64);
-            blockSize = addInt("bs", "Block size : local work size", 64);
-            groupNonces = addInt("gn", "nonce per group", 1024 * 1024);
+            gridSize = addInt("gs", "Grid size : number work groups", 28);
+            blockSize = addInt("bs", "Block size : local work size", 128);
+            groupNonces = addInt("gn", "nonce per group", 1024 * 2048);
         }
-
 
         @Override
         public IMiner createMiner(ParsedOptions options) {
@@ -202,7 +201,7 @@ public class CLMiner implements IMiner {
         CLDevice device = selectDevice();
         if (device == null)
             return;
-        Bench.start(() -> new CLMiner(device, 48, 64, 1024 * 1024), -1);
+        Bench.start(() -> new CLMiner(device, 28, 128, 1024 * 2048), -1);
     }
 
 }
