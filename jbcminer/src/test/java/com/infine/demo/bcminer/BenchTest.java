@@ -29,10 +29,11 @@ class BenchTest {
 
     static class TestMiner implements IMiner {
         private long total = 0;
+        private final MinerStats stats = new MinerStats();
 
         @Override
         public MinerStats getStats(double elapsedSecs) {
-            return new MinerStats(total, 0);
+            return stats.update(total, elapsedSecs);
         }
 
         @Override
@@ -48,10 +49,11 @@ class BenchTest {
 
     static class NoMatchTestMiner implements IMiner {
         private long total = 0;
+        private final MinerStats stats = new MinerStats();
 
         @Override
         public MinerStats getStats(double elapsedSecs) {
-            return new MinerStats(total, 0);
+            return stats.update(total, elapsedSecs);
         }
 
         @Override

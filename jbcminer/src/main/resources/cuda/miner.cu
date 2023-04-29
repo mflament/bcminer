@@ -163,28 +163,25 @@ __device__ void hash_block(const uint header[3], const uint midstate[H_INTS], ui
 * [11] hMastOffset (int)
 * [12] hMask
 */
-extern "C" __global__ void mine(uint *globalData, const uint baseNonce, const uint nonceCount, uint *result)
+extern "C" __global__ void mine(const uint *globalData, const uint baseNonce, const uint groupNonces, uint *result)
 {
-    __shared__ uint header[3];
-    __shared__ uint midstate[8];
     extern __shared__ int localMatches[];
+
+    const uint groupId = blockIdx.x,
+               localId = threadIdx.x,
+               groupSize = blockDim.x;
+
+    uint header[3];
+    uint midstate[8];
+    uint workBuffer[BUFFER_INTS];
+    uint hash[H_INTS];
 
     int hMaskOffset = (int)globalData[11];
     uint hMask = globalData[12];
 
-    uint workBuffer[BUFFER_INTS];
-    uint hash[H_INTS];
-
-    uint groupCount = gridDim.x;
-    uint groupNonces = nonceCount / groupCount;
-    uint groupId = blockIdx.x;
-    uint localId = threadIdx.x;
-    uint groupSize = blockDim.x;
-
     uint startNonce = baseNonce + groupId * groupNonces + localId;
-
-    for (int i = localId; i < 3; i += groupSize) header[i] = globalData[i];
-    for (int i = localId; i < 8; i += groupSize) midstate[i] = globalData[3 + i];
+    for (int i = 0; i < 3; i ++) header[i] = globalData[i];
+    for (int i = 0; i < 8; i ++) midstate[i] = globalData[3 + i];
     localMatches[localId] = -1;
     __syncthreads();
 
@@ -208,10 +205,10 @@ extern "C" __global__ void mine(uint *globalData, const uint baseNonce, const ui
         }
         if (localId == 0 && localMatches[0] >= 0) {
             // printf("matched by local id %d\n", localMatches[0]);
-            result[0] = 1;
-            result[1] = nonce + localMatches[0];
+            if (atomicCAS(&result[0], 0, 1) == 0) {
+                result[1] = nonce + localMatches[0];
+            }
         }
-        __threadfence();
         if (result[0] != 0) {
             // printf("nonce matched: group id %d local id: %d result: %d\n", groupId, localId, result[0]);
             break;

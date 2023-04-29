@@ -28,9 +28,9 @@ public record CLDevice(CLPlatform platform, long id, String name, String vendor,
         List<CLDevice> devices = new ArrayList<>(devicesCount[0]);
         for (int i = 0; i < devicesCount[0]; i++) {
             long deviceId = deviceIds.get(i);
-            String name = readDeviceInfo(deviceId, CL_DEVICE_NAME);
-            String vendor = readDeviceInfo(deviceId, CL_DEVICE_VENDOR);
-            String openclVersion = readDeviceInfo(deviceId, CL_DEVICE_OPENCL_C_VERSION);
+            String name = readStringDeviceInfo(deviceId, CL_DEVICE_NAME);
+            String vendor = readStringDeviceInfo(deviceId, CL_DEVICE_VENDOR);
+            String openclVersion = readStringDeviceInfo(deviceId, CL_DEVICE_OPENCL_C_VERSION);
             devices.add(new CLDevice(platform, deviceId, name, vendor, openclVersion));
         }
         return devices;
@@ -52,7 +52,7 @@ public record CLDevice(CLPlatform platform, long id, String name, String vendor,
         return buffer.getInt(0);
     }
 
-    private static String readDeviceInfo(long deviceId, int infoName) {
+    public static String readStringDeviceInfo(long deviceId, int infoName) {
         return CLUtil.readStringInfo(
                 sizeBuffer -> clGetDeviceInfo(deviceId, infoName, (ByteBuffer) null, sizeBuffer),
                 dataBuffer -> clGetDeviceInfo(deviceId, infoName, dataBuffer, null)

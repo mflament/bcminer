@@ -10,14 +10,17 @@ import java.nio.LongBuffer;
 
 public class CppMiner implements IMiner {
 
+    private final MinerStats stats = new MinerStats();
+    private long totalHashes;
+
     @Override
     public MinerStats getStats(double elapsedSecs) {
-        return new MinerStats(getTotalHashes(), elapsedSecs);
+        return stats.update(totalHashes, elapsedSecs);
     }
 
     @Override
     public Integer mine(BlockHeader header, int startNonce) {
-        try (MemoryStack stack = MemoryStack.stackPush()){
+        try (MemoryStack stack = MemoryStack.stackPush()) {
             ByteBuffer dataBuffer = stack.malloc(13 * Integer.BYTES);
             header.copyData(dataBuffer);
             LongBuffer resultBuffer = stack.mallocLong(1);
@@ -27,7 +30,7 @@ public class CppMiner implements IMiner {
             long result = resultBuffer.get(0);
             if (result < 0)
                 return null;
-            return (int)result;
+            return (int) result;
         }
     }
 
@@ -38,6 +41,6 @@ public class CppMiner implements IMiner {
     public static void main(String[] args) throws InterruptedException {
         Runtime runtime = Runtime.getRuntime();
         runtime.loadLibrary("cppminer");
-        Bench.start(CppMiner::new, 0);
+        Bench.start(CppMiner::new, -1);
     }
 }

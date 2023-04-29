@@ -3,10 +3,12 @@ package com.infine.demo.bcminer.cl.clsupport;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 
+import javax.annotation.Nullable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Scanner;
 
 import static org.lwjgl.opencl.CL10.*;
@@ -17,44 +19,61 @@ import static org.lwjgl.opencl.CL12.CL_KERNEL_GLOBAL_WORK_SIZE;
 
 public final class CLUtil {
 
+    private static final String LS = System.lineSeparator();
+
     private CLUtil() {
     }
 
-    public static CLDevice selectDevice() {
-        Scanner scanner = new Scanner(System.in);
-        String newLine = System.lineSeparator();
-        List<CLPlatform> platforms = CLPlatform.list();
+    public static List<CLDevice> listDevices() {
         List<CLDevice> devices = new ArrayList<>();
-        StringBuffer message = new StringBuffer();
-        for (CLPlatform platform : platforms) {
-            message.append(platform.name()).append(newLine);
+        for (CLPlatform platform : CLPlatform.list()) {
             List<CLDevice> platformDevices = platform.getDevices();
-            for (CLDevice device : platformDevices) {
-                message.append(String.format("    %2d : %s (%s / %s)%n", devices.size(), device.name(), device.vendor(), device.openCLVersion()));
-                devices.add(device);
-            }
+            devices.addAll(platformDevices);
         }
-        message.append("-1 : Exit");
+        return devices;
+    }
+
+    @Nullable
+    public static CLDevice selectDevice() {
+        List<CLDevice> devices = listDevices();
+        int index = selectDevice(devices);
+        if (index < 0)
+           return null;
+        return devices.get(index);
+    }
+
+    public static int selectDevice(List<CLDevice> devices) {
         if (devices.isEmpty()) {
             System.out.println("No Open CL devices found");
-            return null;
+            return -1;
         }
         if (devices.size() == 1)
-            return devices.get(0);
+            return 0;
 
-        System.out.println(message);
+        Scanner scanner = new Scanner(System.in);
+        StringBuffer prompt = new StringBuffer();
+        String platform = null;
+        for (CLDevice device : devices) {
+            String devicePlatform = device.platform().name();
+            if (!Objects.equals(platform, devicePlatform)) {
+                prompt.append(devicePlatform).append(LS);
+                platform = devicePlatform;
+            }
+            prompt.append(String.format("    %2d : %s (%s / %s)%n", devices.size(), device.name(), device.vendor(), device.openCLVersion()));
+            devices.add(device);
+        }
+        prompt.append("-1 : Exit");
+        System.out.println(prompt);
         while (true) {
             String input = scanner.nextLine();
             try {
                 int i = Integer.parseInt(input);
-                if (i < 0)
-                    return null;
                 if (i < devices.size())
-                    return devices.get(i);
+                    return i;
             } catch (NumberFormatException e) {
                 // swallow
             }
-            System.out.println("Invalid index");
+            System.out.println("Invalid device index");
         }
     }
 

@@ -38,9 +38,7 @@ export class WebglMinerControls extends Component<WebglMinerControlsProps, { tex
     }
 }
 
-export function
-
-createTextureSizes() {
+export function createTextureSizes() {
     const results: number[] = [];
     let size = 256;
     for (let i = 0; i < 9; i++) {
@@ -50,5 +48,4 @@ createTextureSizes() {
     return results;
 }
 
-const
-    textureSizes = createTextureSizes();
+const textureSizes = createTextureSizes();
