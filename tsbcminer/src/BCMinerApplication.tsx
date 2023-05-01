@@ -1,6 +1,6 @@
 import {ChangeEventHandler, Component} from "react";
 import {HashSelector} from "./HashSelector";
-import {flipEndianness} from "./Utils";
+import {flipEndianness, printHex} from "./Utils";
 import {IMiner, MinerId} from "./IMiner";
 import {BlockConfig} from "./BlockFetcher";
 
@@ -36,11 +36,13 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
     }
 
     render() {
-        const {minerId, totalHashes, hps, matchedNonce, matchedCount, matchTime} = this.state;
+        const {minerId, totalHashes, hps, matchedNonce, matchedCount, matchTime, blockConfig} = this.state;
         const miner = this._miner;
         const setMiner: ChangeEventHandler<HTMLSelectElement> = e => this.setMiner(e.target.value as MinerId);
         return <div className={"BCMinerApplication"}>
-            <HashSelector hash={DEFAULT_HASH} onBlockConfigChanged={this.blockConfigChanged}/>
+            <HashSelector hash={blockConfig?.data || DEFAULT_HASH}
+                          onBlockConfigSearch={() => this.setState({blockConfig: undefined})}
+                          onBlockConfigChanged={this.blockConfigChanged}/>
             <div className="miner-config">
                 Miner :
                 <select onChange={setMiner} value={minerId}>
@@ -53,7 +55,7 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 
             <div className="mining-controls">
                 <div>
-                    <button onClick={this.toggle}>{miner.running ? "Stop" : "Start"}</button>
+                    <button onClick={this.toggle} disabled={!blockConfig}>{miner.running ? "Stop" : "Start"}</button>
                 </div>
 
                 <div>
@@ -69,7 +71,9 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
                 {matchedNonce !== undefined &&
                     <div>
                         <span>Matched nonce : </span>
-                        {matchedNonce === null ? "not found" : <strong>{matchedNonce.toString(16).toUpperCase()} (matched {matchedCount} times, matched after {((matchTime || 0) / 1000)?.toFixed(1)} s)</strong>}
+                        {matchedNonce === null ? "not found" :
+                            <strong>{matchedNonce.toString(16).toUpperCase()} (matched {matchedCount} times, matched
+                                after {((matchTime || 0) / 1000)?.toFixed(1)} s)</strong>}
                     </div>
                 }
             </div>
@@ -122,5 +126,5 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
 }
 
 function formatNumber(n: number) {
-    return Math.round(n / 1000).toLocaleString(undefined, {useGrouping: true}) +" K";
+    return Math.round(n / 1000).toLocaleString(undefined, {useGrouping: true}) + " K";
 }

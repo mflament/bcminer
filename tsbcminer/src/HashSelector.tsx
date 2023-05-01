@@ -5,6 +5,8 @@ import {BlockConfig, fetchBlockConfig, fetchLastHash} from "./BlockFetcher";
 interface HSelectorProps {
     hash?: string
 
+    onBlockConfigSearch(): void;
+
     onBlockConfigChanged(config?: BlockConfig): void
 }
 
@@ -46,6 +48,7 @@ export class HashSelector extends Component<HSelectorProps, HSelectorState> {
 
     private readonly fetch = async (hash: string): Promise<void> => {
         this.setState({hash, fetching: true});
+        this.props.onBlockConfigSearch();
         const block = await fetchBlockConfig(hash);
         this.setState(state => {
             if (state.hash === hash) return {...state, block, fetching: false};

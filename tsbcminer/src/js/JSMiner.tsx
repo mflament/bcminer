@@ -70,7 +70,7 @@ export class JSMiner implements IMiner {
     }
 
     get matchTime(): number {
-        return this.matchTime;
+        return this._matchTime;
     }
 
     get matchedNonce(): number | null | undefined {
@@ -88,7 +88,6 @@ export class JSMiner implements IMiner {
 
 function JSMinerControls(props: { onWorkersChanged(workers: number): void, workers: number, disabled: boolean }) {
     const [workers, setWorkers] = useState(props.workers);
-    const {onWorkersChanged, disabled} = props;
     const workersChanged: ChangeEventHandler<HTMLInputElement> = e => {
         const newWorkers = e.target.valueAsNumber;
         setWorkers(newWorkers);
@@ -96,7 +95,7 @@ function JSMinerControls(props: { onWorkersChanged(workers: number): void, worke
     }
     return <div className="jsminer-controls">
         <input type="range" min={1} max={navigator.hardwareConcurrency} step={1} value={workers}
-               onChange={workersChanged} disabled={disabled}/>
+               onChange={workersChanged} disabled={props.disabled}/>
         <span><strong>{workers}</strong> workers</span>
     </div>
 }
