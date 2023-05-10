@@ -90,13 +90,15 @@ public abstract class MinerOptions {
     }
 
     protected Option<Boolean> addFlag(String name, @Nullable String doc, boolean defaultValue) {
-        Option<Boolean> opt = new Option<>(name, doc, MinerOptions::isTrue, defaultValue);
+        Option<Boolean> opt = new Option<>(name, doc, MinerOptions::hasFlag, defaultValue);
         options.put(opt.name(), opt);
         return opt;
     }
 
-    private static boolean isTrue(String s) {
-        return s.equalsIgnoreCase("true") || s.equalsIgnoreCase("on") || s.equals("1");
+    private static boolean hasFlag(String s) {
+        if (s.length() > 0)
+            return s.equalsIgnoreCase("true") || s.equalsIgnoreCase("on") || s.equals("1");
+        return true;
     }
 
     public record Option<T>(String name, String doc, Function<String, T> parser, T defaultValue) {
