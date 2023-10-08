@@ -6,7 +6,7 @@ import webpack from "webpack";
 const mode = process.env.NODE_ENV === "production" ? "production" : "development"
 const config: webpack.Configuration = {
     mode,
-    entry: ['./src/index.tsx', './src/js/JSMinerWorker.ts'],
+    entry: ['./src/index.tsx', './src/js/JSMinerWorker.ts', './src/webgpu/WebGPUMinerWorker.ts'],
     plugins: [
         new HtmlWebpackPlugin({
             title: "BCMiner",
@@ -35,7 +35,7 @@ const config: webpack.Configuration = {
                     // Translates CSS into CommonJS
                     "css-loader",
                     // Compiles Sass to CSS
-                    "sass-loader",
+                    {loader:  "sass-loader", options: {sourceMap: false}},
                 ],
             },
             {
@@ -72,7 +72,7 @@ const config: webpack.Configuration = {
     watchOptions: {
         ignored: ['**/node_modules'],
     },
-    devtool: mode === "development" ? 'inline-source-map' : false,
+    devtool: mode === "development" ? 'source-map' : false,
     devServer: mode === "development" ? {
         static: [{
             directory: path.join(__dirname, 'public'),

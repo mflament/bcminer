@@ -9,6 +9,7 @@ export interface JSMinerStart {
     blockConfig: BlockConfig;
     startNonce: number;
     threadIndex: number;
+    threadsCount: number;
 }
 
 export interface JSMinerResponse {
@@ -40,31 +41,31 @@ function mine(task: JSMinerStart) {
     const threadIndex = task.threadIndex;
     let totalHashes = 0,
         matchedNonce: number | undefined = undefined,
-        matchedCount = 0,
-        nonce = task.startNonce + task.threadIndex;
+        matchedCount = 0,matchedTime;
+    const nonce = new Uint32Array([task.startNonce + task.threadIndex]);
+    const threadsCount = task.threadsCount;
     const blockData = new BlockData(parseHex(task.blockConfig.data));
     const hash = newHashBuffer();
     const hasher = nonceHasher(blockData);
     const mineChunk = () => {
         let remainings  = CHUNK_SIZE;
-        while (running) {
-            hasher(nonce, hash);
+        while (remainings > 0) {
+            if (!running)
+                return;
+            hasher(nonce[0], hash);
             if (blockData.testHash(hash)) {
-                matchedNonce = nonce;
+                matchedTime = performance.now();
                 matchedCount++;
+                matchedNonce = nonce[0];
             }
             totalHashes++;
-            nonce++;
-            if (nonce > 0xFFFFFFFF)
-                nonce = 0;
+            nonce[0] += threadsCount;
             remainings--;
-            if (remainings === 0) {
-                const response: JSMinerResponse = {totalHashes, threadIndex, matchedCount, matchedNonce, matchedTime: performance.now()};
-                self.postMessage(response);
-                setTimeout(mineChunk);
-                break;
-            }
         }
+
+        const response: JSMinerResponse = {totalHashes, threadIndex, matchedCount, matchedNonce, matchedTime: performance.now()};
+        self.postMessage(response);
+        setTimeout(mineChunk);
     }
     running = true;
     mineChunk();

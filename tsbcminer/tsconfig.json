@@ -1,7 +1,8 @@
 {
   "files": [
     "src/index.tsx",
-    "src/js/JSMinerWorker.ts"
+    "src/js/JSMinerWorker.ts",
+    "src/webgpu/WebGPUMinerWorker.ts"
   ],
   "exclude": [
     "node_modules/**"

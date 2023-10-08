@@ -2,6 +2,7 @@ import {HEADER_INTS, swap} from './Sha256';
 import {flipEndianness, parseHex, printHex} from "./Utils";
 
 export interface BlockConfig {
+    hash: string;
     data: string;
     expectedNonce: number;
 }
@@ -23,6 +24,7 @@ export async function fetchBlockConfig(hash: string): Promise<BlockConfig> {
     if (response.ok) {
         const data: BlockchainData = await response.json();
         return {
+            hash,
             data: createHeader(data),
             expectedNonce: data.nonce
         };

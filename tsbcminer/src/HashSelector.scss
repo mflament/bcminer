@@ -1,2 +1,7 @@
 .HashSelector {
+  p {
+    display: flex;
+    flex-direction: row;
+    column-gap: 1em;
+  }
 }
