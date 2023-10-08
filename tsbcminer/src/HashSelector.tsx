@@ -3,28 +3,30 @@ import "./HashSelector.scss"
 import {BlockConfig, fetchBlockConfig, fetchLastHash} from "./BlockFetcher";
 
 interface HSelectorProps {
-    hash?: string
+    config: BlockConfig,
 
-    onBlockConfigSearch(): void;
-
-    onBlockConfigChanged(config?: BlockConfig): void
+    onChange(config?: BlockConfig): void;
 }
 
 interface HSelectorState {
+    config: BlockConfig;
     hash: string;
-    block?: BlockConfig;
-    fetching: boolean;
+    loading?: boolean;
 }
 
 export class HashSelector extends Component<HSelectorProps, HSelectorState> {
 
     constructor(props: Readonly<HSelectorProps> | HSelectorProps) {
         super(props);
-        this.state = {hash: props.hash || "", fetching: false};
+        this.state = {config: props.config, hash: props.config.hash};
+    }
+
+    async componentDidMount() {
+        this.props.onChange(this.state.config);
     }
 
     render() {
-        const {hash, block, fetching} = this.state;
+        const {hash, config, loading} = this.state;
         const {fetch, fetchLast} = this;
         const hashChanged: ChangeEventHandler<HTMLInputElement> = e => this.setState({hash: e.target.value});
         const hashLength = 64;
@@ -32,32 +34,30 @@ export class HashSelector extends Component<HSelectorProps, HSelectorState> {
             <p>
                 Hash: <input type="text" size={hashLength} minLength={hashLength} maxLength={hashLength} value={hash}
                              onChange={hashChanged}/>
-                <button onClick={() => hash && fetch(hash)} disabled={!hash || fetching}>Get</button>
-                <button onClick={fetchLast} disabled={fetching}>Get last</button>
+                <button onClick={() => fetch(this.state.hash)} disabled={loading || config.hash === hash}>Get</button>
+                <button onClick={fetchLast} disabled={loading}>Get last</button>
             </p>
             <p>
-                Expected nonce <strong>{block?.expectedNonce?.toString(16).toUpperCase()}</strong>
+                Expected nonce <strong>{config.expectedNonce.toString(16).toUpperCase()}</strong>
             </p>
         </div>;
     }
 
-    async componentDidMount() {
-        if (this.state.hash)
-            await this.fetch(this.state.hash);
-    }
 
     private readonly fetch = async (hash: string): Promise<void> => {
-        this.setState({hash, fetching: true});
-        this.props.onBlockConfigSearch();
+        this.setState({hash, loading: true});
         const block = await fetchBlockConfig(hash);
         this.setState(state => {
-            if (state.hash === hash) return {...state, block, fetching: false};
+            if (state.hash === hash) {
+                this.props.onChange(block)
+                return {...state, block, loading: false};
+            }
             return state;
-        }, () => this.props.onBlockConfigChanged(this.state.block));
+        });
     };
 
     private readonly fetchLast = async (): Promise<void> => {
-        this.setState({hash: "", fetching: true});
+        this.setState({hash: "", loading: true});
         let hash = await fetchLastHash();
         await this.fetch(hash);
     }

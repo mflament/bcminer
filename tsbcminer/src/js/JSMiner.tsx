@@ -1,47 +1,65 @@
-import {IMiner} from "../IMiner";
+import {IMiner, IMinerFactory} from "../IMiner";
 import {BlockConfig} from "../BlockFetcher";
 import {ChangeEventHandler, ReactElement, useState} from "react";
 import {JSMinerResponse, JSMinerStart} from "./JSMinerWorker";
 
-export class JSMiner implements IMiner {
-    readonly id = "js";
+interface JSMinerOptions {
+    workersCount?: number;
+}
+
+export class JSMiner implements IMiner<JSMinerOptions> {
+
+    static readonly factory: IMinerFactory<JSMinerOptions> = {
+        name: 'JS Miner',
+        async create(options?: JSMinerOptions) {
+            return new JSMiner(options);
+        }
+    }
 
     private _running = false;
     private _matchedNonce?: number | null;
     private _matchTime = -1;
 
     private startTime = 0;
-    private _workersCount = navigator.hardwareConcurrency;
+    private _workersCount = 0;
     private _workers?: { worker: Worker, totalHashes: number, matchedCount: number }[];
 
-    start(blockConfig: BlockConfig, startNonce?: number): void {
+    private constructor(options?: JSMinerOptions) {
+        this._workersCount = options?.workersCount || navigator.hardwareConcurrency;
+    }
+
+    get options(): JSMinerOptions {
+        return {workersCount: this._workersCount};
+    }
+
+    start(blockConfig: BlockConfig, startNonce?: number) {
         if (this._running) return;
         this._running = true;
         this._matchedNonce = undefined;
         startNonce = startNonce === undefined ? 0 : startNonce;
         this._workers = [];
 
-        this.startTime = performance.now();
-        for (let threadIndex = 0; threadIndex < this._workersCount; threadIndex++) {
+        const threadsCount = this._workersCount;
+        for (let threadIndex = 0; threadIndex < threadsCount; threadIndex++) {
             const worker = new Worker(new URL("./JSMinerWorker.ts", import.meta.url));
-            const message: JSMinerStart = {startNonce, threadIndex, blockConfig};
+            const message: JSMinerStart = {startNonce, threadIndex, threadsCount, blockConfig};
             worker.onmessage = this.handleWorkerResponse
             worker.postMessage(message)
             this._workers.push({worker, totalHashes: 0, matchedCount: 0})
         }
+        this.startTime = performance.now();
     }
 
     private readonly handleWorkerResponse = (e: { data: JSMinerResponse }) => {
-        const {threadIndex, matchedCount, matchedNonce, totalHashes} = e.data;
+        const {threadIndex, matchedCount, matchedNonce, matchedTime, totalHashes} = e.data;
         const worker = this._workers && this._workers[threadIndex];
         if (!worker) return;
         worker.totalHashes = totalHashes;
         worker.matchedCount = matchedCount;
         if (matchedNonce !== undefined) {
             this._matchedNonce = matchedNonce;
-            const now = performance.now();
-            this._matchTime = now - this.startTime;
-            this.startTime = now;
+            this._matchTime = performance.now() - matchedTime;
+            this.startTime = matchedTime;
         }
     }
 

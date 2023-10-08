@@ -1,4 +1,4 @@
-import {IMiner} from "../IMiner";
+import {IMiner, IMinerFactory} from "../IMiner";
 import {BlockConfig} from "../BlockFetcher";
 import {ReactElement} from "react";
 import {BlockData} from "../Sha256";
@@ -22,6 +22,10 @@ import fsminerUVec4 from "./shaders/fsminer-uvec4.fs.glsl";
 import fsminerUint from "./shaders/fsminer-uint.fs.glsl";
 import fsminerReduce from "./shaders/fsminer-reduce.fs.glsl";
 
+export interface WebGLMinerOptions {
+    textureSize?: number;
+}
+
 export interface MinerUniforms {
     uData: WebGLUniformLocation | null,
     uMidstate: WebGLUniformLocation | null,
@@ -35,11 +39,18 @@ const REDUCED_SIZE = 64;
 const REDUCE_FACTOR = 2;
 const DEFAULT_TEXTURE_SIZE = 4096;
 
-export class WebglMiner implements IMiner {
-    readonly id = "webgl";
+export class WebGLMiner implements IMiner<WebGLMinerOptions> {
+
+    static readonly factory: IMinerFactory<WebGLMinerOptions> = {
+        name: 'WebGL Miner',
+        async create(options?: WebGLMinerOptions) {
+            return new WebGLMiner(options);
+        }
+    }
+
     readonly gl: WebGL2RenderingContext;
 
-    private _textureSize = DEFAULT_TEXTURE_SIZE;
+    private _textureSize: number;
 
     private readonly mineProgram: GLProgram;
     private readonly reduceProgram: GLProgram;
@@ -59,7 +70,8 @@ export class WebglMiner implements IMiner {
     private _matchTime = -1;
     private _running = false;
 
-    constructor() {
+    private constructor(options?: WebGLMinerOptions) {
+        this._textureSize = options?.textureSize || DEFAULT_TEXTURE_SIZE;
         const gl = createGLContext();
         this.gl = gl;
         this.mineProgram = createProgram(gl, quadVS, UVEC4 ? fsminerUVec4 : fsminerUint);
@@ -86,6 +98,10 @@ export class WebglMiner implements IMiner {
         this.resultFramebuffer = createFrameBuffer(gl);
         this.reduceFramebuffer = createFrameBuffer(gl);
         this.resultBuffer = new Uint32Array(REDUCED_SIZE * REDUCED_SIZE);
+    }
+
+    get options() {
+        return {textureSize: this._textureSize};
     }
 
     get running(): boolean {
@@ -148,7 +164,7 @@ export class WebglMiner implements IMiner {
         setTimeout(miningPass)
     }
 
-    stop(): void {
+    stop():void {
         this._running = false;
     }
 
@@ -165,7 +181,7 @@ export class WebglMiner implements IMiner {
         this.reducedTexture?.delete();
     }
 
-    private starting(blockConfig: BlockConfig, startNonce?: number): void {
+    private starting(blockConfig: BlockConfig, _startNonce?: number): void {
         const gl = this.gl;
         this.createTextures(this._textureSize);
         this.mineProgram.use();
@@ -275,7 +291,7 @@ export class WebglMiner implements IMiner {
     private setUniforms(blockConfig: BlockConfig, uniforms: MinerUniforms) {
         const gl = this.gl;
         const blockData = new BlockData(parseHex(blockConfig.data));
-        console.log([...blockData.data].map(d => d + 'u').join(", "));
+        // console.log([...blockData.data].map(d => d + 'u').join(", "));
         gl.uniform1uiv(uniforms.uData, blockData.data);
         gl.uniform1uiv(uniforms.uMidstate, blockData.midstate);
         gl.uniform1i(uniforms.uHMaskOffset, blockData.hMaskOffset);

@@ -1,11 +1,16 @@
 import {ReactElement} from "react";
 import {BlockConfig} from "./BlockFetcher";
 
-export type MinerId = "webgl" | "webgpu" | "js";
+export interface IMinerFactory<O extends any = any> {
+    readonly name: string;
 
-export interface IMiner {
-    id: MinerId;
-    controls: ReactElement;
+    create(options?: O): Promise<IMiner<O>>;
+}
+
+export interface IMiner<O extends any = any> {
+    readonly options: O;
+
+    readonly controls: ReactElement;
 
     start(blockConfig: BlockConfig, startNonce?: number): void;
 
