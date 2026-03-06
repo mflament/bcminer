@@ -1,4 +1,4 @@
-import {ChangeEventHandler, Component, ReactElement} from "react";
+import {type ChangeEventHandler, Component, type ReactElement} from "react";
 
 interface WebglMinerControlsProps {
     textureSize: number;

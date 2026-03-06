@@ -1,9 +1,9 @@
-import {ReactElement} from "react";
-import {IMiner, IMinerFactory} from "../IMiner";
+import {type ReactElement} from "react";
+import {type IMiner, type IMinerFactory} from "../IMiner";
 import {WebgpuMinerControls} from "./WebGPUMinerControls";
-import {BlockConfig} from "../BlockFetcher";
-import {WebGPUMinerOptions} from "./WebGPUMinerOptions";
-import {createMinerWorker, WebGPUMinerWorker} from "./WebGPUMinerWorker";
+import {type BlockConfig} from "../BlockFetcher";
+import {type WebGPUMinerOptions} from "./WebGPUMinerOptions";
+import {createMinerWorker, type WebGPUMinerWorker} from "./WebGPUMinerWorker";
 
 export class WebGPUMiner implements IMiner<WebGPUMinerOptions> {
 

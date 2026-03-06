@@ -1,7 +1,7 @@
-import {IMiner, IMinerFactory} from "../IMiner";
-import {BlockConfig} from "../BlockFetcher";
-import {ChangeEventHandler, ReactElement, useState} from "react";
-import {JSMinerResponse, JSMinerStart} from "./JSMinerWorker";
+import type {IMiner, IMinerFactory} from "../IMiner";
+import type {BlockConfig} from "../BlockFetcher";
+import {type ChangeEventHandler, type ReactElement, useState} from "react";
+import {type JSMinerResponse, type JSMinerStart} from "./JSMinerWorker";
 
 interface JSMinerOptions {
     workersCount?: number;
@@ -20,7 +20,6 @@ export class JSMiner implements IMiner<JSMinerOptions> {
     private _matchedNonce?: number | null;
     private _matchTime = -1;
 
-    private startTime = 0;
     private _workersCount = 0;
     private _workers?: { worker: Worker, totalHashes: number, matchedCount: number }[];
 
@@ -47,7 +46,6 @@ export class JSMiner implements IMiner<JSMinerOptions> {
             worker.postMessage(message)
             this._workers.push({worker, totalHashes: 0, matchedCount: 0})
         }
-        this.startTime = performance.now();
     }
 
     private readonly handleWorkerResponse = (e: { data: JSMinerResponse }) => {
@@ -59,7 +57,6 @@ export class JSMiner implements IMiner<JSMinerOptions> {
         if (matchedNonce !== undefined) {
             this._matchedNonce = matchedNonce;
             this._matchTime = performance.now() - matchedTime;
-            this.startTime = matchedTime;
         }
     }
 

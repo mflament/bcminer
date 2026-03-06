@@ -1,7 +1,6 @@
 import {BlockData, newHashBuffer, nonceHasher} from "../Sha256";
-import {BlockConfig} from "../BlockFetcher";
+import {type BlockConfig} from "../BlockFetcher";
 import {parseHex} from "../Utils";
-
 
 const CHUNK_SIZE = 50_000;
 
@@ -41,7 +40,7 @@ function mine(task: JSMinerStart) {
     const threadIndex = task.threadIndex;
     let totalHashes = 0,
         matchedNonce: number | undefined = undefined,
-        matchedCount = 0,matchedTime;
+        matchedCount = 0;
     const nonce = new Uint32Array([task.startNonce + task.threadIndex]);
     const threadsCount = task.threadsCount;
     const blockData = new BlockData(parseHex(task.blockConfig.data));
@@ -54,7 +53,6 @@ function mine(task: JSMinerStart) {
                 return;
             hasher(nonce[0], hash);
             if (blockData.testHash(hash)) {
-                matchedTime = performance.now();
                 matchedCount++;
                 matchedNonce = nonce[0];
             }

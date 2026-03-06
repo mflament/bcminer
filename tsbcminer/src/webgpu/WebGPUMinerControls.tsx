@@ -1,4 +1,4 @@
-import {Component, ReactElement} from "react";
+import {Component, type ReactElement} from "react";
 
 interface WebpuMinerControlsProps {
 }
@@ -18,6 +18,6 @@ export class WebgpuMinerControls extends Component<WebpuMinerControlsProps, {}> 
         return <div className={"GPUMinerController"}></div>;
     }
 
-    componentDidUpdate(prevProps: Readonly<WebpuMinerControlsProps>) {
+    componentDidUpdate(_prevProps: Readonly<WebpuMinerControlsProps>) {
     }
 }

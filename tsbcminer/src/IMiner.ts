@@ -1,5 +1,5 @@
-import {ReactElement} from "react";
-import {BlockConfig} from "./BlockFetcher";
+import {type ReactElement} from "react";
+import {type BlockConfig} from "./BlockFetcher";
 
 export interface IMinerFactory<O extends any = any> {
     readonly name: string;

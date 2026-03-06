@@ -58,7 +58,7 @@ export async function createMinerWorker(workgroupSize: number): Promise<WebGPUMi
         },
         async mineChunk(baseNonce: Uint32Array, workgroups: number) {
             // console.log(baseNonce)
-            queue.writeBuffer(buffers.baseNonce, 0, baseNonce);
+            queue.writeBuffer(buffers.baseNonce, 0, baseNonce.buffer);
 
             let commandEncoder = device.createCommandEncoder();
             const passEncoder = commandEncoder.beginComputePass();

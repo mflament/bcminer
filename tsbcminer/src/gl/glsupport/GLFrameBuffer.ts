@@ -1,6 +1,6 @@
 import { checkNull } from '../../Utils';
-import { DataBuffer } from './DataBuffer';
-import { GLTexture } from './GLTexture';
+import { type DataBuffer } from './DataBuffer';
+import { type GLTexture } from './GLTexture';
 
 export interface GLFrameBuffer {
   bind(): void;
@@ -8,7 +8,7 @@ export interface GLFrameBuffer {
   attach(texture: GLTexture, attachmentPoint?: GLenum, level?: number): void;
   attachment(attachmentPoint?: GLenum): GLTexture | undefined;
   delete(): void;
-  status(): FrameBufferStatus;
+  status(): GLenum;
   read(
     target: DataBuffer,
     targetOffset?: number,
@@ -57,17 +57,8 @@ export function createFrameBuffer(gl: WebGL2RenderingContext): GLFrameBuffer {
     delete() {
       gl.deleteFramebuffer(fb);
     },
-    status(): FrameBufferStatus {
+    status(): GLenum {
       return gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     }
   };
-}
-
-export enum FrameBufferStatus {
-  FRAMEBUFFER_COMPLETE = WebGL2RenderingContext.FRAMEBUFFER_COMPLETE,
-  FRAMEBUFFER_INCOMPLETE_ATTACHMENT = WebGL2RenderingContext.FRAMEBUFFER_INCOMPLETE_ATTACHMENT,
-  FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = WebGL2RenderingContext.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT,
-  FRAMEBUFFER_INCOMPLETE_DIMENSIONS = WebGL2RenderingContext.FRAMEBUFFER_INCOMPLETE_DIMENSIONS,
-  FRAMEBUFFER_UNSUPPORTED = WebGL2RenderingContext.FRAMEBUFFER_UNSUPPORTED,
-  FRAMEBUFFER_INCOMPLETE_MULTISAMPLE = WebGL2RenderingContext.FRAMEBUFFER_INCOMPLETE_MULTISAMPLE
 }

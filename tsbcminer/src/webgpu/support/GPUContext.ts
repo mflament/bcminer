@@ -45,6 +45,10 @@ export class GPUContext<C extends HTMLCanvasElement | OffscreenCanvas = HTMLCanv
         return new GPUContext(canvas, gpu, adapter, device);
     }
 
+    readonly canvas: C;
+    readonly gpu: GPU;
+    readonly adapter: GPUAdapter;
+    readonly device: GPUDevice;
     readonly canvasContext: GPUCanvasContext;
     readonly presentationFormat: GPUTextureFormat;
 
@@ -52,10 +56,14 @@ export class GPUContext<C extends HTMLCanvasElement | OffscreenCanvas = HTMLCanv
 
     private _onResize?: ResizeCallback;
 
-    private constructor(readonly canvas: C,
-                        readonly gpu: GPU,
-                        readonly adapter: GPUAdapter,
-                        readonly device: GPUDevice) {
+    private constructor(canvas: C,
+                        gpu: GPU,
+                        adapter: GPUAdapter,
+                        device: GPUDevice) {
+        this.canvas = canvas;
+        this.gpu = gpu;
+        this.adapter = adapter;
+        this.device = device;
         const canvasContext = canvas.getContext("webgpu") as GPUCanvasContext;
         if (!canvasContext)
             throw new Error("No webgpu canvas context");

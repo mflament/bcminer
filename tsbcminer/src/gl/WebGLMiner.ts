@@ -1,6 +1,6 @@
-import {IMiner, IMinerFactory} from "../IMiner";
-import {BlockConfig} from "../BlockFetcher";
-import {ReactElement} from "react";
+import type {IMiner, IMinerFactory} from "../IMiner";
+import type {BlockConfig} from "../BlockFetcher";
+import type {ReactElement} from "react";
 import {BlockData} from "../Sha256";
 import {
     createDataTexture,
@@ -8,11 +8,10 @@ import {
     createFrameBuffer,
     createGLContext,
     createProgram,
-    FrameBufferStatus,
-    GLDrawable,
-    GLFrameBuffer,
-    GLProgram,
-    GLTexture,
+    type GLDrawable, glEnumName,
+    type GLFrameBuffer,
+    type GLProgram,
+    type GLTexture,
     TextureConfigs
 } from "./glsupport";
 import {parseHex} from "../Utils";
@@ -266,8 +265,8 @@ export class WebGLMiner implements IMiner<WebGLMinerOptions> {
         frameBuffer.attach(texture, gl.COLOR_ATTACHMENT0);
         gl.drawBuffers([WebGL2RenderingContext.COLOR_ATTACHMENT0]);
         const status = frameBuffer.status();
-        if (status !== FrameBufferStatus.FRAMEBUFFER_COMPLETE)
-            throw new Error('frame buffer error ' + FrameBufferStatus[status]);
+        if (status !== gl.FRAMEBUFFER_COMPLETE)
+            throw new Error('frame buffer error ' + glEnumName(status));
     }
 
     private createResultTexture(size: number): GLTexture {
@@ -276,16 +275,6 @@ export class WebGLMiner implements IMiner<WebGLMinerOptions> {
             width: size,
             height: size
         });
-    }
-
-    private getUniformLocations(program: GLProgram): MinerUniforms {
-        return {
-            uData: program.uniformLocation('uData'),
-            uMidstate: program.uniformLocation('uMidstate'),
-            uHMaskOffset: program.uniformLocation('uHMaskOffset'),
-            uHMask: program.uniformLocation('uHMask'),
-            uNonce: program.uniformLocation('uNonce')
-        }
     }
 
     private setUniforms(blockConfig: BlockConfig, uniforms: MinerUniforms) {

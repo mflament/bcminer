@@ -10,7 +10,7 @@ export interface GLProgram {
 
 export function createProgram(gl: WebGL2RenderingContext, vs: string, fs: string): GLProgram {
   const program = checkNull(gl.createProgram(), 'program');
-  const shaders = [compileShader(gl, vs, ShaderType.VS), compileShader(gl, fs, ShaderType.FS)];
+  const shaders = [compileShader(gl, vs, gl.VERTEX_SHADER), compileShader(gl, fs, gl.FRAGMENT_SHADER)];
   for (const shader of shaders) {
     gl.attachShader(program, shader);
     gl.deleteShader(shader);
@@ -41,12 +41,7 @@ export function createProgram(gl: WebGL2RenderingContext, vs: string, fs: string
   };
 }
 
-enum ShaderType {
-  VS = WebGL2RenderingContext.VERTEX_SHADER,
-  FS = WebGL2RenderingContext.FRAGMENT_SHADER
-}
-
-function compileShader(gl: WebGL2RenderingContext, source: string, type: ShaderType): WebGLShader {
+function compileShader(gl: WebGL2RenderingContext, source: string, type: GLenum): WebGLShader {
   const shader = checkNull(gl.createShader(type), 'shader');
   gl.shaderSource(shader, source.trimStart());
   gl.compileShader(shader);

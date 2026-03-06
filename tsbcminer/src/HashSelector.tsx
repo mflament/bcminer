@@ -1,6 +1,6 @@
-import {ChangeEventHandler, Component} from "react";
+import {type ChangeEventHandler, Component} from "react";
 import "./HashSelector.scss"
-import {BlockConfig, fetchBlockConfig, fetchLastHash} from "./BlockFetcher";
+import {type BlockConfig, fetchBlockConfig, fetchLastHash} from "./BlockFetcher";
 
 interface HSelectorProps {
     config: BlockConfig,

@@ -1,47 +1,7 @@
 {
-  "files": [
-    "src/index.tsx",
-    "src/js/JSMinerWorker.ts",
-    "src/webgpu/WebGPUMinerWorker.ts"
-  ],
-  "exclude": [
-    "node_modules/**"
-  ],
-  "compilerOptions": {
-    "outDir": "dist/",
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "typeRoots": [
-      "./node_modules/@webgpu/types",
-      "./node_modules/@types"
-    ],
-    "lib": [
-      "ESNext",
-      "DOM"
-    ],
-    "sourceMap": true,
-    "declaration": false,
-    "jsx": "react-jsx",
-    "resolveJsonModule": true,
-    "allowJs": false,
-    "allowUmdGlobalAccess": false,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "noImplicitReturns": true,
-    "strictFunctionTypes": true,
-    "alwaysStrict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
-  },
-  "ts-node": {
-    "compilerOptions": {
-      "target": "ES5",
-      "module": "CommonJS",
-      "esModuleInterop": true
-    }
-  }
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
 }

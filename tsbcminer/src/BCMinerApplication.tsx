@@ -1,7 +1,7 @@
-import {ChangeEventHandler, Component} from "react";
+import {type ChangeEventHandler, Component} from "react";
 import {HashSelector} from "./HashSelector";
-import {IMiner} from "./IMiner";
-import {BlockConfig} from "./BlockFetcher";
+import {type IMiner} from "./IMiner";
+import {type BlockConfig} from "./BlockFetcher";
 
 import "./BCMinerApplication.scss"
 import {JSMiner} from "./js";
@@ -54,7 +54,7 @@ export class BCMinerApplication extends Component<MinerControllerProps, MinerCon
     }
 
     render() {
-        const {minerId, matchTime, blockConfig} = this.state;
+        const {minerId, blockConfig} = this.state;
         const miner = this.miner;
         const setMinerId: ChangeEventHandler<HTMLSelectElement> = e => this.setMiner(e.target.value as MinerId);
         return <div className={"BCMinerApplication"}>

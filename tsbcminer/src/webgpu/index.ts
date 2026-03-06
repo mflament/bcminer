@@ -1,2 +1,2 @@
 export * from "./WebGPUMiner"
-export {WebGPUMinerOptions} from "./WebGPUMinerOptions";
+export {type WebGPUMinerOptions} from "./WebGPUMinerOptions";
